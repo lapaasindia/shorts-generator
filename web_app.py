@@ -28,6 +28,7 @@ from flask import (
     url_for,
 )
 from werkzeug.utils import secure_filename
+from urllib.parse import quote as requests_quote
 
 # Load .env before anything else
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -35,6 +36,7 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 import shorts_generator.config as generator_config
 from shorts_generator import generate_shorts
 from shorts_generator.local.templates import list_templates, normalize_template_ids
+from shorts_generator import social_publish
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -95,7 +97,7 @@ def _migrate_env_user() -> None:
     env_user = os.getenv("WEB_AUTH_USERNAME", "").strip()
     env_pass = os.getenv("WEB_AUTH_PASSWORD", "").strip()
     if env_user and env_pass and not _users_exist():
-        users = {env_user: {"password": _hash_password(env_pass), "created_at": _utc_now(), "role": "admin"}}
+        users = {env_user: {"password": _hash_password(env_pass), "display": env_user.capitalize(), "created_at": _utc_now(), "role": "admin"}}
         _save_users(users)
         print(f"[auth] Migrated env user '{env_user}' into users.json", flush=True)
 
@@ -641,8 +643,12 @@ def media(job_id: str, filename: str):
     return send_from_directory(job_dir, filename, as_attachment=False)
 
 
+# NOTE: social_connections.json stores live OAuth tokens — treat as a secret.
 SOCIAL_CONNECTIONS_FILE = BASE_DIR / "social_connections.json"
 POST_ANALYTICS_FILE = BASE_DIR / "post_analytics.json"
+SCHEDULED_POSTS_FILE = BASE_DIR / "scheduled_posts.json"
+_social_lock = threading.Lock()
+_schedule_lock = threading.Lock()
 
 
 def _load_social_connections() -> Dict:
@@ -658,6 +664,19 @@ def _save_social_connections(data: Dict) -> None:
     SOCIAL_CONNECTIONS_FILE.write_text(json.dumps(data, indent=2))
 
 
+def _public_connections() -> Dict:
+    """Connections stripped of secrets, plus whether each provider is configured."""
+    raw = _load_social_connections()
+    configured = social_publish.configured_platforms()
+    out = {}
+    for platform in ("youtube", "instagram", "facebook"):
+        out[platform] = {
+            "configured": configured.get(platform, False),
+            "connection": social_publish.public_summary(raw.get(platform)),
+        }
+    return out
+
+
 def _load_post_analytics() -> list:
     if POST_ANALYTICS_FILE.exists():
         try:
@@ -669,6 +688,19 @@ def _load_post_analytics() -> list:
 
 def _save_post_analytics(data: list) -> None:
     POST_ANALYTICS_FILE.write_text(json.dumps(data, indent=2))
+
+
+def _load_scheduled_posts() -> list:
+    if SCHEDULED_POSTS_FILE.exists():
+        try:
+            return json.loads(SCHEDULED_POSTS_FILE.read_text())
+        except Exception:
+            pass
+    return []
+
+
+def _save_scheduled_posts(data: list) -> None:
+    SCHEDULED_POSTS_FILE.write_text(json.dumps(data, indent=2))
 
 
 def _analyze_post_performance(post: Dict) -> Dict:
@@ -723,28 +755,67 @@ def _analyze_post_performance(post: Dict) -> Dict:
     }
 
 
+def _oauth_redirect_uri(platform: str) -> str:
+    base = os.getenv("PUBLIC_BASE_URL", request.host_url.rstrip("/"))
+    return f"{base}/oauth/{platform}/callback"
+
+
 @app.get("/api/social/connections")
 @login_required
 def get_social_connections():
-    return jsonify(_load_social_connections())
+    # Returns secret-free summaries plus per-platform "configured" flags.
+    return jsonify(_public_connections())
 
 
 @app.post("/api/social/connect")
 @login_required
 def connect_social():
+    """Begin the real OAuth flow; returns the provider authorize URL."""
     data = request.get_json(silent=True) or {}
     platform = data.get("platform")
-    handle = (data.get("handle") or "").strip()
     if platform not in ("youtube", "instagram", "facebook"):
         return jsonify({"error": "Unknown platform"}), 400
-    connections = _load_social_connections()
-    connections[platform] = {
-        "handle": handle,
-        "connected_at": _utc_now(),
-        "status": "connected",
-    }
-    _save_social_connections(connections)
-    return jsonify({"ok": True, "connections": connections})
+    if not social_publish.provider_configured(platform):
+        return jsonify({
+            "error": "not_configured",
+            "message": (
+                f"{platform.title()} API credentials are not set on the server. "
+                "See SOCIAL_SETUP.md to add OAuth credentials."
+            ),
+        }), 400
+    state = secrets.token_urlsafe(24)
+    session[f"oauth_state_{platform}"] = state
+    try:
+        url = social_publish.build_auth_url(platform, _oauth_redirect_uri(platform), state)
+    except social_publish.SocialError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify({"ok": True, "auth_url": url})
+
+
+@app.get("/oauth/<platform>/callback")
+@login_required
+def oauth_callback(platform: str):
+    if platform not in ("youtube", "instagram", "facebook"):
+        return redirect(url_for("index") + "#social")
+    error = request.args.get("error")
+    if error:
+        return redirect(url_for("index") + f"#social?error={error}")
+    state = request.args.get("state")
+    expected = session.pop(f"oauth_state_{platform}", None)
+    if not state or state != expected:
+        return redirect(url_for("index") + "#social?error=state_mismatch")
+    code = request.args.get("code")
+    if not code:
+        return redirect(url_for("index") + "#social?error=no_code")
+    try:
+        conn = social_publish.exchange_code(platform, code, _oauth_redirect_uri(platform))
+        with _social_lock:
+            connections = _load_social_connections()
+            connections[platform] = conn
+            _save_social_connections(connections)
+    except Exception as exc:  # noqa: BLE001 — surface any provider error to the UI
+        return redirect(url_for("index") + f"#social?error={requests_quote(str(exc))}")
+    return redirect(url_for("index") + "#social?connected=" + platform)
 
 
 @app.post("/api/social/disconnect")
@@ -754,10 +825,11 @@ def disconnect_social():
     platform = data.get("platform")
     if platform not in ("youtube", "instagram", "facebook"):
         return jsonify({"error": "Unknown platform"}), 400
-    connections = _load_social_connections()
-    connections[platform] = None
-    _save_social_connections(connections)
-    return jsonify({"ok": True, "connections": connections})
+    with _social_lock:
+        connections = _load_social_connections()
+        connections[platform] = None
+        _save_social_connections(connections)
+    return jsonify({"ok": True, "connections": _public_connections()})
 
 
 @app.get("/api/analytics/posts")
@@ -818,13 +890,227 @@ def compare_posts():
     })
 
 
+@app.post("/api/analytics/sync")
+@login_required
+def sync_analytics():
+    """Pull live metrics from connected platforms for every published post.
+
+    Updates view/like/comment counts in post_analytics.json and re-runs the
+    learning analysis so Insights and Compare reflect real numbers.
+    """
+    connections = _load_social_connections()
+    posts = _load_post_analytics()
+    updated = 0
+    errors = []
+    for post in posts:
+        ext_id = post.get("external_id")
+        platform = post.get("platform")
+        conn = connections.get(platform)
+        if not ext_id or not conn:
+            continue
+        try:
+            metrics = social_publish.fetch_metrics(conn, ext_id)
+            post.update({
+                "views": metrics["views"],
+                "likes": metrics["likes"],
+                "comments": metrics["comments"],
+                "shares": metrics["shares"],
+                "synced_at": _utc_now(),
+            })
+            post["analysis"] = _analyze_post_performance(post)
+            updated += 1
+        except social_publish.SocialError as exc:
+            errors.append(f"{platform}: {exc}")
+    if updated:
+        _save_post_analytics(posts)
+    return jsonify({"ok": True, "updated": updated, "errors": errors, "posts": posts})
+
+
+# ── Scheduling ─────────────────────────────────────────────────────────────────
+
+@app.get("/api/schedule")
+@login_required
+def list_scheduled():
+    return jsonify({"scheduled": _load_scheduled_posts()})
+
+
+@app.post("/api/schedule")
+@login_required
+def create_scheduled():
+    """Schedule a rendered reel to publish later on one or more platforms."""
+    data = request.get_json(silent=True) or {}
+    job_id = data.get("job_id")
+    short_index = int(data.get("short_index") or 1)
+    platforms = [p for p in (data.get("platforms") or []) if p in ("youtube", "instagram", "facebook")]
+    publish_at = (data.get("publish_at") or "").strip()
+    title = (data.get("title") or "Untitled reel")[:120]
+    caption = (data.get("caption") or "")[:2200]
+    if not platforms:
+        return jsonify({"error": "Pick at least one platform"}), 400
+    if not publish_at:
+        return jsonify({"error": "Pick a publish date/time"}), 400
+
+    # Resolve the rendered clip file (if a render job was chosen).
+    clip_path = ""
+    poster = ""
+    if job_id:
+        with jobs_lock:
+            job = jobs.get(job_id)
+        if job:
+            shorts = (job.get("result") or {}).get("shorts") or []
+            if 1 <= short_index <= len(shorts):
+                short = shorts[short_index - 1]
+                resolved = _media_path_from_value(job_id, short.get("clip_url"))
+                clip_path = str(resolved) if resolved else ""
+                poster = short.get("poster_media_url") or ""
+
+    entry = {
+        "id": uuid.uuid4().hex[:8],
+        "job_id": job_id or "",
+        "short_index": short_index,
+        "clip_path": clip_path,
+        "poster": poster,
+        "platforms": platforms,
+        "title": title,
+        "caption": caption,
+        "publish_at": publish_at,
+        "status": "scheduled",        # scheduled → publishing → published / failed
+        "created_at": _utc_now(),
+        "results": {},
+        "error": "",
+    }
+    with _schedule_lock:
+        items = _load_scheduled_posts()
+        items.insert(0, entry)
+        _save_scheduled_posts(items)
+    return jsonify({"ok": True, "scheduled": entry})
+
+
+@app.delete("/api/schedule/<sched_id>")
+@login_required
+def delete_scheduled(sched_id: str):
+    with _schedule_lock:
+        items = _load_scheduled_posts()
+        items = [s for s in items if s.get("id") != sched_id]
+        _save_scheduled_posts(items)
+    return jsonify({"ok": True})
+
+
+@app.post("/api/schedule/<sched_id>/publish-now")
+@login_required
+def publish_now(sched_id: str):
+    items = _load_scheduled_posts()
+    entry = next((s for s in items if s.get("id") == sched_id), None)
+    if not entry:
+        return jsonify({"error": "Not found"}), 404
+    _run_scheduled_publish(entry)
+    return jsonify({"ok": True, "scheduled": entry})
+
+
+def _public_clip_url(clip_path: str) -> Optional[str]:
+    """Build an https URL Meta can fetch. Requires PUBLIC_BASE_URL for IG/FB."""
+    base = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
+    if not base or not clip_path:
+        return None
+    p = Path(clip_path).resolve()
+    try:
+        rel = p.relative_to(WEB_OUTPUT_DIR)
+    except ValueError:
+        return None
+    parts = rel.parts
+    if len(parts) >= 2:
+        return f"{base}/media/{parts[0]}/{parts[-1]}"
+    return None
+
+
+def _run_scheduled_publish(entry: Dict) -> None:
+    """Publish one scheduled entry to all its platforms; record results."""
+    entry["status"] = "publishing"
+    _persist_scheduled(entry)
+    connections = _load_social_connections()
+    public_url = _public_clip_url(entry.get("clip_path", ""))
+    any_ok = False
+    for platform in entry["platforms"]:
+        conn = connections.get(platform)
+        if not conn:
+            entry["results"][platform] = {"ok": False, "error": "not connected"}
+            continue
+        try:
+            res = social_publish.publish(
+                conn,
+                video_path=entry.get("clip_path", ""),
+                title=entry["title"],
+                caption=entry["caption"],
+                public_video_url=public_url,
+            )
+            entry["results"][platform] = {"ok": True, "id": res["id"], "url": res["url"]}
+            any_ok = True
+            # Record it as a published post so analytics can be synced later.
+            _record_published_post(entry, platform, res["id"])
+        except Exception as exc:  # noqa: BLE001
+            entry["results"][platform] = {"ok": False, "error": str(exc)}
+    entry["status"] = "published" if any_ok else "failed"
+    entry["published_at"] = _utc_now()
+    _persist_scheduled(entry)
+
+
+def _record_published_post(entry: Dict, platform: str, external_id: str) -> None:
+    posts = _load_post_analytics()
+    post = {
+        "id": uuid.uuid4().hex[:8],
+        "title": entry["title"],
+        "platform": platform,
+        "external_id": external_id,
+        "posted_at": _utc_now(),
+        "views": 0, "likes": 0, "comments": 0, "shares": 0, "score": 0,
+        "template": "", "thumbnail": entry.get("poster", ""), "notes": "",
+    }
+    post["analysis"] = _analyze_post_performance(post)
+    posts.insert(0, post)
+    _save_post_analytics(posts)
+
+
+def _persist_scheduled(entry: Dict) -> None:
+    with _schedule_lock:
+        items = _load_scheduled_posts()
+        for i, s in enumerate(items):
+            if s.get("id") == entry["id"]:
+                items[i] = entry
+                break
+        _save_scheduled_posts(items)
+
+
+def _scheduler_loop() -> None:
+    """Background worker: every 60s, publish any scheduled post that is due."""
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            for entry in _load_scheduled_posts():
+                if entry.get("status") != "scheduled":
+                    continue
+                when = entry.get("publish_at", "")
+                try:
+                    due = datetime.fromisoformat(when.replace("Z", "+00:00"))
+                    if due.tzinfo is None:
+                        due = due.replace(tzinfo=timezone.utc)
+                except ValueError:
+                    continue
+                if due <= now:
+                    _run_scheduled_publish(entry)
+        except Exception:  # noqa: BLE001 — never let the loop die
+            traceback.print_exc()
+        threading.Event().wait(60)
+
+
 @app.get("/api/calendar")
 @login_required
 def get_calendar():
     posts = _load_post_analytics()
+    scheduled = _load_scheduled_posts()
     with jobs_lock:
         job_list = list(jobs.values())
     events = []
+    # Published / tracked posts (live performance).
     for post in posts:
         events.append({
             "id": post["id"],
@@ -834,7 +1120,20 @@ def get_calendar():
             "platform": post.get("platform", ""),
             "views": post.get("views", 0),
             "verdict": (post.get("analysis") or {}).get("verdict", ""),
+            "external_id": post.get("external_id", ""),
         })
+    # Upcoming scheduled posts.
+    for s in scheduled:
+        events.append({
+            "id": s["id"],
+            "type": "scheduled",
+            "title": s.get("title", "Scheduled reel"),
+            "date": s.get("publish_at", "")[:10],
+            "time": s.get("publish_at", "")[11:16],
+            "platforms": s.get("platforms", []),
+            "status": s.get("status", "scheduled"),
+        })
+    # Render jobs (production activity).
     for job in job_list:
         date_str = (job.get("completed_at") or job.get("created_at") or "")[:10]
         if date_str:
@@ -846,6 +1145,10 @@ def get_calendar():
                 "status": job.get("status"),
             })
     return jsonify({"events": events})
+
+
+# Start the scheduler thread once, at import time.
+threading.Thread(target=_scheduler_loop, daemon=True).start()
 
 
 if __name__ == "__main__":

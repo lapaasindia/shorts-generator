@@ -222,14 +222,54 @@
                 <button class="text-button compact" id="calPrev">← Prev</button>
                 <span class="cal-month-label" id="calMonthLabel"></span>
                 <button class="text-button compact" id="calNext">Next →</button>
+                <button class="connect-btn yt-btn compact-btn" id="scheduleBtn">+ Schedule reel</button>
               </div>
             </div>
 
             <div class="calendar-legend">
               <span class="cal-dot render"></span><span>Render</span>
+              <span class="cal-dot scheduled"></span><span>Scheduled</span>
               <span class="cal-dot viral"></span><span>Viral post</span>
               <span class="cal-dot growing"></span><span>Growing</span>
               <span class="cal-dot underperforming"></span><span>Underperforming</span>
+            </div>
+
+            <!-- Schedule modal -->
+            <div class="modal-overlay hidden" id="scheduleModal">
+              <div class="modal">
+                <div class="modal-header">
+                  <h2>Schedule a reel</h2>
+                  <button class="modal-close" id="scheduleClose">✕</button>
+                </div>
+                <div class="modal-body">
+                  <div class="field">
+                    <label for="schedJob">Rendered reel</label>
+                    <select id="schedJob"><option value="">— pick a render —</option></select>
+                  </div>
+                  <div class="field">
+                    <label for="schedTitle">Title</label>
+                    <input id="schedTitle" type="text" placeholder="Reel title">
+                  </div>
+                  <div class="field">
+                    <label for="schedCaption">Caption</label>
+                    <textarea id="schedCaption" rows="2" placeholder="Caption / description"></textarea>
+                  </div>
+                  <div class="field">
+                    <label>Publish to</label>
+                    <div class="platform-picker">
+                      <label class="plat-check"><input type="checkbox" value="youtube"> YouTube</label>
+                      <label class="plat-check"><input type="checkbox" value="instagram"> Instagram</label>
+                      <label class="plat-check"><input type="checkbox" value="facebook"> Facebook</label>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="schedWhen">Publish at</label>
+                    <input id="schedWhen" type="datetime-local">
+                  </div>
+                  <button class="connect-btn yt-btn" id="schedSubmit">Schedule</button>
+                  <p class="sched-hint" id="schedHint"></p>
+                </div>
+              </div>
             </div>
 
             <div class="calendar-grid-wrap">
@@ -263,12 +303,9 @@
                   <div class="social-badge" id="yt-badge"></div>
                 </div>
                 <div class="social-card-body" id="yt-body">
-                  <p class="social-desc">Connect your YouTube channel to track short video performance, compare clips, and learn from what goes viral.</p>
-                  <div class="field">
-                    <label for="yt-handle">Channel handle or URL</label>
-                    <input id="yt-handle" type="text" placeholder="@YourChannel or channel URL">
-                  </div>
-                  <button class="connect-btn yt-btn" onclick="connectSocial('youtube')">Connect YouTube</button>
+                  <p class="social-desc">Sign in with Google to publish Shorts directly, auto-sync views &amp; likes, and learn from what goes viral.</p>
+                  <p class="social-setup hidden" id="yt-setup">⚙ Server setup required — add Google OAuth credentials (see SOCIAL_SETUP.md) to enable real sign-in.</p>
+                  <button class="connect-btn yt-btn" onclick="connectSocial('youtube')">Sign in with Google</button>
                 </div>
                 <div class="social-card-connected hidden" id="yt-connected">
                   <div class="connected-info">
@@ -291,11 +328,8 @@
                   <div class="social-badge" id="ig-badge"></div>
                 </div>
                 <div class="social-card-body" id="ig-body">
-                  <p class="social-desc">Link your Instagram to track Reels performance, analyze what drives saves and shares, and optimize your content strategy.</p>
-                  <div class="field">
-                    <label for="ig-handle">Instagram username</label>
-                    <input id="ig-handle" type="text" placeholder="@yourhandle">
-                  </div>
+                  <p class="social-desc">Connect an Instagram Business account to publish Reels, auto-sync plays &amp; likes, and optimize your strategy.</p>
+                  <p class="social-setup hidden" id="ig-setup">⚙ Server setup required — add Meta app credentials (see SOCIAL_SETUP.md) and link an IG Business account.</p>
                   <button class="connect-btn ig-btn" onclick="connectSocial('instagram')">Connect Instagram</button>
                 </div>
                 <div class="social-card-connected hidden" id="ig-connected">
@@ -319,11 +353,8 @@
                   <div class="social-badge" id="fb-badge"></div>
                 </div>
                 <div class="social-card-body" id="fb-body">
-                  <p class="social-desc">Connect Facebook Page or Reels to monitor video performance, track audience growth, and learn from top-performing content.</p>
-                  <div class="field">
-                    <label for="fb-handle">Page name or URL</label>
-                    <input id="fb-handle" type="text" placeholder="Your Page name or URL">
-                  </div>
+                  <p class="social-desc">Connect a Facebook Page to publish videos, monitor performance, and learn from top-performing content.</p>
+                  <p class="social-setup hidden" id="fb-setup">⚙ Server setup required — add Meta app credentials (see SOCIAL_SETUP.md) to enable Page publishing.</p>
                   <button class="connect-btn fb-btn" onclick="connectSocial('facebook')">Connect Facebook</button>
                 </div>
                 <div class="social-card-connected hidden" id="fb-connected">
@@ -337,12 +368,13 @@
             </div>
 
             <div class="social-tips">
-              <div class="tips-header"><span>◉</span> How tracking works</div>
+              <div class="tips-header"><span>◉</span> How publishing &amp; analytics work</div>
               <ul>
-                <li>Enter your channel/profile handle and click Connect.</li>
-                <li>Add posts manually in the <strong>Insights</strong> tab with view/like counts.</li>
-                <li>The AI analyzes each post and surfaces learnings in <strong>Compare</strong>.</li>
-                <li>Full API integration coming soon — for now, enter metrics manually after posting.</li>
+                <li>Click Connect to sign in via the platform's official OAuth — tokens are stored securely on the server.</li>
+                <li>Schedule reels from the <strong>Calendar</strong>; the server publishes them automatically at the set time.</li>
+                <li>Published posts auto-appear in <strong>Insights</strong>; hit <strong>Sync analytics</strong> to pull live views/likes.</li>
+                <li>The AI then surfaces what's working in <strong>Compare</strong>.</li>
+                <li>One-time setup of API credentials is required — see <strong>SOCIAL_SETUP.md</strong>.</li>
               </ul>
             </div>
           </div>
@@ -351,7 +383,10 @@
           <div id="section-insights" class="hidden">
             <div class="page-header">
               <div><p class="page-kicker">AI Learning</p><h1 class="page-title">Post Insights</h1></div>
-              <button class="text-button compact" id="addPostBtn">+ Add Post</button>
+              <div class="page-actions">
+                <button class="text-button compact" id="syncBtn">⟳ Sync analytics</button>
+                <button class="text-button compact" id="addPostBtn">+ Add Post</button>
+              </div>
             </div>
 
             <div class="modal-overlay hidden" id="addPostModal">

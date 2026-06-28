@@ -8,3 +8,9 @@ web_output/
 work/
 *.mp4
 .DS_Store
+
+# Social secrets & runtime state (contain OAuth tokens / credentials)
+social_connections.json
+scheduled_posts.json
+users.json
+post_analytics.json

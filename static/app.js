@@ -325,6 +325,7 @@ function renderCalendar() {
     const isToday = today.getFullYear() === calYear && today.getMonth() === calMonth && today.getDate() === d;
     const dotsHtml = dayEvents.slice(0, 4).map(function(ev) {
       const cls = ev.type === "render" ? "render"
+        : ev.type === "scheduled" ? "scheduled"
         : ev.verdict === "viral" ? "viral"
         : ev.verdict === "growing" ? "growing"
         : "underperforming";
@@ -354,6 +355,11 @@ window.showCalEvents = function(dateStr) {
       if (ev.type === "render") {
         return "<div class=\"cal-event-item render\"><span class=\"cal-event-icon\">▶</span><div><strong>" + escapeHtml(ev.title) + "</strong><span>Render · " + escapeHtml(ev.status) + "</span></div></div>";
       }
+      if (ev.type === "scheduled") {
+        const plats = (ev.platforms || []).join(", ");
+        const st = ev.status || "scheduled";
+        return "<div class=\"cal-event-item scheduled\"><span class=\"cal-event-icon\">◷</span><div><strong>" + escapeHtml(ev.title) + "</strong><span>" + (ev.time ? escapeHtml(ev.time) + " · " : "") + escapeHtml(plats) + " · <em class=\"verdict-tag " + (st === 'failed' ? 'underperforming' : st === 'published' ? 'viral' : 'growing') + "\">" + escapeHtml(st) + "</em></span></div><button class=\"mini-del\" onclick=\"cancelScheduled('" + ev.id + "')\">✕</button></div>";
+      }
       const vc = ev.verdict === "viral" ? "viral" : ev.verdict === "growing" ? "growing" : "underperforming";
       const icon = ev.platform === "youtube" ? "▶" : ev.platform === "instagram" ? "◆" : "●";
       return "<div class=\"cal-event-item " + vc + "\"><span class=\"cal-event-icon\">" + icon + "</span><div><strong>" + escapeHtml(ev.title) + "</strong><span>" + escapeHtml(ev.platform) + " · " + fmtNum(ev.views || 0) + " views · <em class=\"verdict-tag " + vc + "\">" + escapeHtml(ev.verdict) + "</em></span></div></div>";
@@ -369,16 +375,81 @@ if (calNext) calNext.addEventListener("click", function() {
   calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar();
 });
 
+// ─── SCHEDULING ───────────────────────────────────────────────────────────────
+const scheduleModal = document.getElementById("scheduleModal");
+const scheduleBtn = document.getElementById("scheduleBtn");
+const scheduleClose = document.getElementById("scheduleClose");
+const schedSubmit = document.getElementById("schedSubmit");
+
+async function openScheduleModal() {
+  if (!scheduleModal) return;
+  // Populate the render dropdown from recent jobs.
+  const sel = document.getElementById("schedJob");
+  if (sel) {
+    try {
+      const r = await fetch("/api/jobs");
+      const p = await r.json();
+      sel.innerHTML = "<option value=\"\">— pick a render —</option>" +
+        (p.jobs || []).filter(function(j){ return j.status === "complete"; }).map(function(j) {
+          return "<option value=\"" + escapeHtml(j.id) + "\">" + escapeHtml(j.title || j.source_label || j.id) + "</option>";
+        }).join("");
+    } catch (e) {}
+  }
+  scheduleModal.classList.remove("hidden");
+}
+if (scheduleBtn) scheduleBtn.addEventListener("click", openScheduleModal);
+if (scheduleClose) scheduleClose.addEventListener("click", function() { scheduleModal.classList.add("hidden"); });
+if (scheduleModal) scheduleModal.addEventListener("click", function(e) { if (e.target === scheduleModal) scheduleModal.classList.add("hidden"); });
+
+if (schedSubmit) schedSubmit.addEventListener("click", async function() {
+  const hint = document.getElementById("schedHint");
+  const platforms = Array.from(document.querySelectorAll(".platform-picker input:checked")).map(function(c){ return c.value; });
+  const whenLocal = document.getElementById("schedWhen").value;
+  const payload = {
+    job_id: document.getElementById("schedJob").value,
+    short_index: 1,
+    title: document.getElementById("schedTitle").value,
+    caption: document.getElementById("schedCaption").value,
+    platforms: platforms,
+    publish_at: whenLocal ? new Date(whenLocal).toISOString() : "",
+  };
+  if (!platforms.length) { hint.textContent = "Pick at least one platform."; return; }
+  if (!whenLocal) { hint.textContent = "Pick a publish date/time."; return; }
+  schedSubmit.disabled = true; hint.textContent = "Scheduling…";
+  const r = await fetch("/api/schedule", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+  });
+  const data = await r.json();
+  schedSubmit.disabled = false;
+  if (data.ok) {
+    hint.textContent = "";
+    scheduleModal.classList.add("hidden");
+    initCalendar();
+  } else {
+    hint.textContent = data.error || "Could not schedule.";
+  }
+});
+
+window.cancelScheduled = async function(id) {
+  await fetch("/api/schedule/" + encodeURIComponent(id), { method: "DELETE" });
+  initCalendar();
+};
+
 // ─── SOCIAL CONNECTS ──────────────────────────────────────────────────────────
 const PLATFORM_PREFIXES = { youtube: "yt", instagram: "ig", facebook: "fb" };
+
+let socialState = {};
 
 async function loadSocialConnections() {
   const r = await fetch("/api/social/connections");
   const data = await r.json();
-  ["youtube", "instagram", "facebook"].forEach(function(p) { renderSocialCard(p, data[p]); });
+  socialState = data;
+  ["youtube", "instagram", "facebook"].forEach(function(p) {
+    renderSocialCard(p, (data[p] || {}).connection, (data[p] || {}).configured);
+  });
 }
 
-function renderSocialCard(platform, conn) {
+function renderSocialCard(platform, conn, configured) {
   const pfx = PLATFORM_PREFIXES[platform];
   const statusEl = document.getElementById(pfx + "-status");
   const badgeEl = document.getElementById(pfx + "-badge");
@@ -386,6 +457,8 @@ function renderSocialCard(platform, conn) {
   const connectedEl = document.getElementById(pfx + "-connected");
   const handleDisp = document.getElementById(pfx + "-handle-display");
   const timeDisp = document.getElementById(pfx + "-time-display");
+  const setupEl = document.getElementById(pfx + "-setup");
+  const connectBtn = bodyEl ? bodyEl.querySelector(".connect-btn") : null;
   if (!statusEl) return;
   if (conn) {
     statusEl.textContent = "Connected";
@@ -394,28 +467,33 @@ function renderSocialCard(platform, conn) {
     if (bodyEl) bodyEl.classList.add("hidden");
     if (connectedEl) connectedEl.classList.remove("hidden");
     if (handleDisp) handleDisp.textContent = conn.handle || platform;
-    if (timeDisp) timeDisp.textContent = "Connected " + new Date(conn.connected_at).toLocaleDateString();
+    if (timeDisp) timeDisp.textContent = conn.connected_at ? "Connected " + new Date(conn.connected_at).toLocaleDateString() : "Connected";
   } else {
-    statusEl.textContent = "Not connected";
-    statusEl.className = "social-status";
+    statusEl.textContent = configured ? "Not connected" : "Setup required";
+    statusEl.className = "social-status" + (configured ? "" : " setup");
     if (badgeEl) badgeEl.innerHTML = "";
     if (bodyEl) bodyEl.classList.remove("hidden");
     if (connectedEl) connectedEl.classList.add("hidden");
+    if (setupEl) setupEl.classList.toggle("hidden", !!configured);
+    if (connectBtn) connectBtn.disabled = !configured;
   }
 }
 
 window.connectSocial = async function(platform) {
-  const pfx = PLATFORM_PREFIXES[platform];
-  const handleInput = document.getElementById(pfx + "-handle");
-  const handle = handleInput ? handleInput.value.trim() : "";
-  if (!handle) { if (handleInput) handleInput.focus(); return; }
   const r = await fetch("/api/social/connect", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ platform: platform, handle: handle }),
+    body: JSON.stringify({ platform: platform }),
   });
   const data = await r.json();
-  if (data.ok) renderSocialCard(platform, data.connections[platform]);
+  if (data.ok && data.auth_url) {
+    // Hand off to the platform's real OAuth consent screen.
+    window.location.href = data.auth_url;
+  } else if (data.error === "not_configured") {
+    alert(data.message || "This platform needs server-side API credentials. See SOCIAL_SETUP.md.");
+  } else {
+    alert(data.message || data.error || "Could not start sign-in.");
+  }
 };
 
 window.disconnectSocial = async function(platform) {
@@ -425,8 +503,23 @@ window.disconnectSocial = async function(platform) {
     body: JSON.stringify({ platform: platform }),
   });
   const data = await r.json();
-  if (data.ok) renderSocialCard(platform, null);
+  if (data.ok) loadSocialConnections();
 };
+
+// Surface OAuth callback results (e.g. #social?connected=youtube or ?error=...).
+(function handleOAuthReturn() {
+  const hash = window.location.hash || "";
+  if (hash.indexOf("connected=") > -1) {
+    const plat = hash.split("connected=")[1].split("&")[0];
+    setTimeout(function() {
+      showSection("social");
+      loadSocialConnections();
+    }, 50);
+  } else if (hash.indexOf("error=") > -1) {
+    const err = decodeURIComponent(hash.split("error=")[1].split("&")[0]);
+    setTimeout(function() { showSection("social"); alert("Connection failed: " + err); }, 50);
+  }
+})();
 
 // ─── INSIGHTS ─────────────────────────────────────────────────────────────────
 let allPosts = [];
@@ -445,6 +538,29 @@ window.closeAddPost = function() {
   const modal = document.getElementById("addPostModal");
   if (modal) modal.classList.add("hidden");
 };
+
+const syncBtn = document.getElementById("syncBtn");
+if (syncBtn) {
+  syncBtn.addEventListener("click", async function() {
+    syncBtn.disabled = true;
+    const original = syncBtn.textContent;
+    syncBtn.textContent = "⟳ Syncing…";
+    try {
+      const r = await fetch("/api/analytics/sync", { method: "POST" });
+      const data = await r.json();
+      if (data.ok) {
+        await loadPosts();
+        syncBtn.textContent = data.updated ? "✓ Synced " + data.updated : "No connected posts";
+        if (data.errors && data.errors.length) console.warn("Sync issues:", data.errors);
+      } else {
+        syncBtn.textContent = "Sync failed";
+      }
+    } catch (e) {
+      syncBtn.textContent = "Sync failed";
+    }
+    setTimeout(function() { syncBtn.textContent = original; syncBtn.disabled = false; }, 2500);
+  });
+}
 
 window.submitPost = async function() {
   const r = await fetch("/api/analytics/posts", {
@@ -666,6 +782,7 @@ function generateSkillUpdates(postA, postB, analysisA, analysisB) {
 updateSourcePanels();
 updateTemplateSummary();
 setEmpty();
+setStatus("");
 loadRecentJobs().catch(function() {});
 loadPosts();
 

@@ -109,6 +109,7 @@
       .sbar.good{background:var(--teal);}
       .sbar.strong{background:var(--accent);}
       .slabel{font-size:10px;font-weight:800;color:var(--muted);}
+      .field-hint{font-size:10px;color:var(--muted);margin-top:2px;}
 
       @media(max-width:860px){body{grid-template-columns:1fr;}.hero{display:none;}
         .form-panel{padding:32px 20px;min-height:100vh;}}
@@ -158,8 +159,11 @@
             <div class="input-wrap">
               <span class="input-icon">@</span>
               <input id="username" name="username" type="text" placeholder="lowercase, no spaces"
-                     autocomplete="username" pattern="[a-z0-9_]+" minlength="3" required>
+                     autocomplete="username" pattern="[a-z0-9_]+" minlength="3" required
+                     oninvalid="this.setCustomValidity('Only lowercase letters, numbers, and underscores allowed (e.g. john_doe)')"
+                     oninput="this.setCustomValidity('')">
             </div>
+            <span class="field-hint">Lowercase letters, numbers and _ only</span>
           </div>
           <div class="field-row">
             <div class="field">
