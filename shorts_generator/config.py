@@ -27,6 +27,11 @@ LOCAL_WHISPER_MODEL = os.getenv("LOCAL_WHISPER_MODEL", "base")
 LOCAL_WHISPER_DEVICE = os.getenv("LOCAL_WHISPER_DEVICE", "auto")  # auto / cpu / cuda
 LOCAL_OUTPUT_DIR = os.getenv("LOCAL_OUTPUT_DIR", "output")
 
+# Web app jobs default to local rendering so templates/upscaling keep working.
+# Set WEB_PIPELINE_MODE=api to route YouTube links through MuAPI instead of
+# yt-dlp when hosted IPs hit YouTube bot checks.
+WEB_PIPELINE_MODE = os.getenv("WEB_PIPELINE_MODE", "local").strip().lower()
+
 # VAD (Voice Activity Detection) settings for faster-whisper
 # Default threshold is 0.5; lower = more sensitive, higher = less sensitive
 # Default min_speech_duration_ms is 250ms; increase to avoid tiny false positives

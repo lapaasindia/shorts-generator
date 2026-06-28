@@ -191,6 +191,19 @@ Local downloads are also cached in `LOCAL_OUTPUT_DIR` as
 `source_<youtube_id>.mp4` when the input is a YouTube URL. If that file already
 exists, the app skips `yt-dlp` and reuses the cached video.
 
+If YouTube shows `Sign in to confirm you're not a bot` on a hosted server, set
+authenticated cookies for `yt-dlp`:
+
+```bash
+YTDLP_COOKIE_FILE=/data/youtube_cookies.txt
+# or
+YTDLP_COOKIES_TEXT="# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t..."
+```
+
+For local desktop runs you can also use `YTDLP_COOKIES_FROM_BROWSER=chrome`.
+If `MUAPI_API_KEY` is configured, hosted web jobs can use `WEB_PIPELINE_MODE=api`
+to avoid server-side `yt-dlp` for YouTube links.
+
 ### Batch processing
 
 Create a `urls.txt` file with one URL per line, then:

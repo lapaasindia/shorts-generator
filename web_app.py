@@ -390,6 +390,12 @@ def _run_job(
 
     output = io.StringIO()
     try:
+        pipeline_mode = generator_config.WEB_PIPELINE_MODE
+        if pipeline_mode == "auto":
+            pipeline_mode = "api" if generator_config.MUAPI_API_KEY and source.startswith(("http://", "https://")) else "local"
+        if pipeline_mode not in {"api", "local"}:
+            pipeline_mode = "local"
+
         with redirect_stdout(output), redirect_stderr(output):
             result = generate_shorts(
                 youtube_url=source,
@@ -397,7 +403,7 @@ def _run_job(
                 aspect_ratio=aspect_ratio,
                 download_format=download_format,
                 language=language or None,
-                mode="local",
+                mode=pipeline_mode,
                 output_dir=str(job_dir),
                 template_ids=template_ids,
                 nonlinear_edit=nonlinear_edit,
@@ -418,7 +424,10 @@ def _run_job(
         _append_log(job_id, "Job complete")
     except Exception as exc:
         _append_log(job_id, output.getvalue())
-        _append_log(job_id, traceback.format_exc())
+        if os.getenv("WEB_SHOW_TRACEBACKS", "false").strip().lower() == "true":
+            _append_log(job_id, traceback.format_exc())
+        else:
+            _append_log(job_id, f"ERROR: {exc}")
         _update_job(
             job_id,
             status="failed",

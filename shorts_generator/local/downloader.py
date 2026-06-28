@@ -106,6 +106,54 @@ def _existing_download(out_dir: str, video_id: str) -> Optional[str]:
     return None
 
 
+def _cookie_file_from_env(out_dir: str) -> Optional[str]:
+    """Resolve a yt-dlp cookies file from file path or raw env text."""
+    cookie_file = os.getenv("YTDLP_COOKIE_FILE", "").strip()
+    if cookie_file:
+        if os.path.exists(cookie_file):
+            return cookie_file
+        print(f"[download/local] YTDLP_COOKIE_FILE does not exist: {cookie_file}", flush=True)
+
+    cookies_text = os.getenv("YTDLP_COOKIES_TEXT", "").strip()
+    if not cookies_text:
+        return None
+
+    cookie_path = Path(out_dir) / "youtube_cookies.txt"
+    # Hosted platforms often store multiline secrets with escaped newlines.
+    normalized = cookies_text.replace("\\n", "\n")
+    cookie_path.write_text(normalized, encoding="utf-8")
+    try:
+        cookie_path.chmod(0o600)
+    except OSError:
+        pass
+    return str(cookie_path)
+
+
+def _is_youtube_auth_error(message: str) -> bool:
+    needle = message.lower()
+    return (
+        "sign in to confirm" in needle
+        or "not a bot" in needle
+        or "cookies" in needle and "youtube" in needle
+        or "confirm you're not a bot" in needle
+    )
+
+
+def _youtube_auth_help(has_cookies: bool) -> str:
+    if has_cookies:
+        return (
+            "YouTube rejected the server download even though cookies are configured. "
+            "Refresh the YouTube cookies and update YTDLP_COOKIE_FILE or YTDLP_COOKIES_TEXT."
+        )
+    return (
+        "YouTube blocked this server download with a bot/sign-in check. "
+        "For hosted deployments, export YouTube cookies and set YTDLP_COOKIES_TEXT "
+        "or mount a cookies.txt file and set YTDLP_COOKIE_FILE. "
+        "For local desktop runs, you can also set YTDLP_COOKIES_FROM_BROWSER=chrome. "
+        "The page theme is unchanged; this is a server-side YouTube authentication requirement."
+    )
+
+
 def download_youtube_local(video_url: str, fmt: str = "720", out_dir: Optional[str] = None) -> str:
     """Download a remote URL or return a local file path unchanged."""
     local_path = _resolve_local_path(video_url)
@@ -149,24 +197,31 @@ def download_youtube_local(video_url: str, fmt: str = "720", out_dir: Optional[s
     cookies_browser = os.getenv("YTDLP_COOKIES_FROM_BROWSER", "").strip()
     if cookies_browser:
         ydl_opts["cookiesfrombrowser"] = (cookies_browser,)
-    cookie_file = os.getenv("YTDLP_COOKIE_FILE", "").strip()
-    if cookie_file and os.path.exists(cookie_file):
+    cookie_file = _cookie_file_from_env(out_dir)
+    has_cookies = bool(cookies_browser or cookie_file)
+    if cookie_file:
         ydl_opts["cookiefile"] = cookie_file
 
     ffmpeg_location = _ffmpeg_location()
     if ffmpeg_location:
         ydl_opts["ffmpeg_location"] = ffmpeg_location
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(video_url, download=True)
-        path = ydl.prepare_filename(info)
-        # merge_output_format may rename the extension after merge
-        if not os.path.exists(path):
-            stem, _ = os.path.splitext(path)
-            for ext in (".mp4", ".mkv", ".webm"):
-                if os.path.exists(stem + ext):
-                    path = stem + ext
-                    break
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(video_url, download=True)
+            path = ydl.prepare_filename(info)
+            # merge_output_format may rename the extension after merge
+            if not os.path.exists(path):
+                stem, _ = os.path.splitext(path)
+                for ext in (".mp4", ".mkv", ".webm"):
+                    if os.path.exists(stem + ext):
+                        path = stem + ext
+                        break
+    except Exception as exc:
+        message = str(exc)
+        if _is_youtube_auth_error(message):
+            raise RuntimeError(_youtube_auth_help(has_cookies)) from exc
+        raise
 
     print(f"[download/local] ready: {path}", flush=True)
     return path

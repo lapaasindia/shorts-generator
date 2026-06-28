@@ -35,6 +35,26 @@ WEB_THREADS=4
 WEB_TIMEOUT_SECONDS=3600
 ```
 
+YouTube links on hosted servers can fail with `Sign in to confirm you're not a
+bot` because YouTube blocks some datacenter IPs. This is not a theme/UI issue;
+the server needs authenticated YouTube cookies or an API-mode backend.
+
+Options:
+
+```bash
+# Preferred hosted setup: mount a Netscape-format cookies.txt file.
+YTDLP_COOKIE_FILE=/data/youtube_cookies.txt
+
+# Or paste the cookies.txt content into a multiline/escaped hosting secret.
+YTDLP_COOKIES_TEXT="# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t..."
+
+# Local desktop only, not hosted servers:
+YTDLP_COOKIES_FROM_BROWSER=chrome
+
+# Alternative when MUAPI_API_KEY is configured:
+WEB_PIPELINE_MODE=api
+```
+
 Keep `WEB_WORKERS=1` unless you replace the in-memory job tracker with Redis or
 a database. Multiple threads are fine and let the team poll/download while a
 render is running.
