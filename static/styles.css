@@ -258,7 +258,8 @@ a {
 
 .status-pill.queued,
 .status-pill.running,
-.status-pill.uploading {
+.status-pill.uploading,
+.status-pill.setup {
   color: var(--black);
   border-color: var(--gold);
   background: var(--gold);
@@ -453,6 +454,27 @@ summary:focus-visible {
 
 .source-input-wrap input {
   padding-left: 38px;
+}
+
+.source-alert {
+  grid-column: 1 / -1;
+  padding: 10px 12px;
+  border: 1px solid rgba(226, 189, 82, 0.34);
+  border-radius: 5px;
+  color: var(--gold);
+  background: rgba(226, 189, 82, 0.09);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.source-alert a {
+  color: var(--accent);
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.source-alert a:hover {
+  text-decoration: underline;
 }
 
 .hidden {
@@ -917,6 +939,14 @@ summary:focus-visible {
 
 .project-progress.failed .progress-track span {
   background: var(--coral);
+}
+
+.project-progress.setup .progress-copy strong {
+  color: var(--gold);
+}
+
+.project-progress.setup .progress-track span {
+  background: var(--gold);
 }
 
 .project-progress.complete .progress-track span {

@@ -13,6 +13,8 @@ const progressTitle = document.querySelector("#progressTitle");
 const progressPercent = document.querySelector("#progressPercent");
 const progressFill = document.querySelector("#progressFill");
 const progressDetail = document.querySelector("#progressDetail");
+const sourceAlert = document.querySelector("#sourceAlert");
+const videoUrlInput = document.querySelector("#videoUrl");
 const sourceRadios = document.querySelectorAll("input[name='source_type']");
 const refreshJobsButton = document.querySelector("#refreshJobs");
 const recentJobs = document.querySelector("#recentJobs");
@@ -27,6 +29,7 @@ const selectAllTemplates = document.querySelector("#selectAllTemplates");
 let pollTimer = null;
 let progressTimer = null;
 let projectProgressValue = 0;
+const YOUTUBE_SETUP_MESSAGE = "YouTube links need server-side setup on this hosted app. Use Upload for now, or ask an admin to enable API mode/cookies once for the workspace.";
 
 // ─── Section navigation ───────────────────────────────────────────────────────
 const SECTIONS = ["create", "calendar", "social", "insights", "compare"];
@@ -137,7 +140,7 @@ function setProjectProgress(percent, title, detail, state) {
   if (!projectProgress || !progressFill || !progressTitle || !progressPercent || !progressDetail) return;
   const value = Math.max(0, Math.min(100, Math.round(percent)));
   projectProgressValue = value;
-  projectProgress.classList.remove("hidden", "queued", "uploading", "running", "complete", "failed");
+  projectProgress.classList.remove("hidden", "queued", "uploading", "running", "complete", "failed", "setup");
   if (state) projectProgress.classList.add(state);
   progressTitle.textContent = title || "Creating project";
   progressPercent.textContent = value + "%";
@@ -189,6 +192,60 @@ function updateProgressFromJob(job) {
 function getSelectedSourceType() {
   const checked = document.querySelector("input[name='source_type']:checked");
   return checked ? checked.value : "url";
+}
+
+function setSourceAlert(message, linkText, linkHref) {
+  if (!sourceAlert) return;
+  sourceAlert.textContent = "";
+  const text = document.createElement("span");
+  text.textContent = message;
+  sourceAlert.appendChild(text);
+  if (linkText && linkHref) {
+    sourceAlert.appendChild(document.createTextNode(" "));
+    const link = document.createElement("a");
+    link.href = linkHref;
+    link.textContent = linkText;
+    sourceAlert.appendChild(link);
+  }
+  sourceAlert.classList.remove("hidden");
+}
+
+function clearSourceAlert() {
+  if (sourceAlert) sourceAlert.classList.add("hidden");
+}
+
+function looksLikeYoutubeUrl(value) {
+  try {
+    const url = new URL(value);
+    let host = url.hostname.toLowerCase();
+    if (host.startsWith("www.")) host = host.slice(4);
+    return host === "youtu.be" || host === "youtube.com" || host.endsWith(".youtube.com");
+  } catch (e) {
+    return false;
+  }
+}
+
+function isYoutubeSetupError(message) {
+  return String(message || "").startsWith("YouTube download setup is required")
+    || String(message || "").startsWith("YouTube links need server-side setup");
+}
+
+function showYoutubeSetupRequired(message) {
+  const detail = message || YOUTUBE_SETUP_MESSAGE;
+  runButton.disabled = false;
+  stopProgressTimer();
+  setStatus("setup", "Setup");
+  setSourceAlert(detail, "Open Status setup", "/status#youtubeSetup");
+  setProjectProgress(100, "YouTube setup needed", detail, "setup");
+  logOutput.textContent = detail;
+  setEmpty("Setup required");
+}
+
+async function youtubeDownloadsReady() {
+  const response = await fetch("/api/status");
+  const payload = await response.json();
+  if (!response.ok) return true;
+  return !!payload.youtube_download_ready;
 }
 
 function selectedUploadFile() {
@@ -381,7 +438,13 @@ async function pollJob(statusUrl) {
 }
 
 // ─── Event listeners (create) ─────────────────────────────────────────────────
-sourceRadios.forEach(function(r) { r.addEventListener("change", updateSourcePanels); });
+sourceRadios.forEach(function(r) {
+  r.addEventListener("change", function() {
+    updateSourcePanels();
+    clearSourceAlert();
+  });
+});
+if (videoUrlInput) videoUrlInput.addEventListener("input", clearSourceAlert);
 templateInputs.forEach(function(i) { i.addEventListener("change", updateTemplateSummary); });
 if (numClipsInput) numClipsInput.addEventListener("input", updateTemplateSummary);
 
@@ -417,6 +480,7 @@ if (form) {
     e.preventDefault();
     clearInterval(pollTimer); pollTimer = null;
     stopProgressTimer();
+    clearSourceAlert();
     runButton.disabled = true;
     const isUpload = getSelectedSourceType() === "upload";
     const uploadFile = selectedUploadFile();
@@ -436,6 +500,18 @@ if (form) {
       logOutput.textContent = "File is too large. Maximum upload size is " + maxUploadMb + " MB.";
       setEmpty("Failed");
       return;
+    }
+    if (!isUpload && videoUrlInput && looksLikeYoutubeUrl(videoUrlInput.value)) {
+      setStatus("queued", "Checking");
+      setProjectProgress(8, "Checking source", "Checking YouTube download setup.", "queued");
+      try {
+        if (!(await youtubeDownloadsReady())) {
+          showYoutubeSetupRequired(YOUTUBE_SETUP_MESSAGE);
+          return;
+        }
+      } catch (e) {
+        // Let the server-side /jobs validation handle it if status preflight fails.
+      }
     }
     setStatus(isUpload ? "uploading" : "queued", isUpload ? "Uploading" : "Queued");
     setProjectProgress(isUpload ? 3 : 12, isUpload ? "Uploading file" : "Queueing project", isUpload ? "Sending video to the server." : "Sending project settings.", isUpload ? "uploading" : "queued");
@@ -473,6 +549,10 @@ if (form) {
         });
       }, 1600);
     } catch(e) {
+      if (isYoutubeSetupError(e.message)) {
+        showYoutubeSetupRequired(e.message);
+        return;
+      }
       runButton.disabled = false;
       stopProgressTimer();
       setStatus("failed");

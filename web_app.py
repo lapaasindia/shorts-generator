@@ -514,11 +514,15 @@ def upload_too_large(_exc):
 @app.get("/api/status")
 @login_required
 def app_status():
+    youtube_status = _youtube_cookie_status()
     return jsonify({
         "status": "ok",
         "warnings": STARTUP_WARNINGS,
         "transcriber_provider": generator_config.TRANSCRIBER_PROVIDER,
         "llm_provider": generator_config.LLM_PROVIDER,
+        "web_pipeline_mode": generator_config.WEB_PIPELINE_MODE,
+        "youtube_download_ready": youtube_status["ready"],
+        "youtube_download_setup_url": url_for("status_page") + "#youtubeSetup",
         "web_output_dir": str(WEB_OUTPUT_DIR),
         "template_count": len(list_templates()),
         "user": _current_user(),
