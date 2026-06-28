@@ -1,19 +1,34 @@
-"""Local transcription via faster-whisper.
+"""Local transcription via faster-whisper or Sarvam AI.
 
 Reads a local media file and returns the same shape the highlight generator
 expects: {duration, segments[start, end, text]}.
 """
 import os
 import re
+import shutil
+import subprocess
+import tempfile
+import wave
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
-from ..config import LOCAL_OUTPUT_DIR, LOCAL_WHISPER_DEVICE, LOCAL_WHISPER_MODEL
+from ..config import (
+    LOCAL_OUTPUT_DIR,
+    LOCAL_WHISPER_DEVICE,
+    LOCAL_WHISPER_MODEL,
+    SARVAM_BASE_URL,
+    SARVAM_CHUNK_SECONDS,
+    SARVAM_LANGUAGE_CODE,
+    SARVAM_STT_MODE,
+    SARVAM_STT_MODEL,
+    TRANSCRIBER_PROVIDER,
+    require_sarvam_key,
+)
 
 
-def _transcript_cache_path(media_path: str) -> Path:
+def _transcript_cache_path(media_path: str, out_dir: Optional[str] = None) -> Path:
     """Return the .srt cache path for a media file."""
-    cache_dir = Path(LOCAL_OUTPUT_DIR)
+    cache_dir = Path(out_dir or LOCAL_OUTPUT_DIR)
     cache_dir.mkdir(parents=True, exist_ok=True)
     return cache_dir / (Path(media_path).stem + ".srt")
 
@@ -37,8 +52,8 @@ def _parse_srt_timestamp(value: str) -> float:
     return hours * 3600 + minutes * 60 + seconds + (millis / 1000.0)
 
 
-def _write_srt_cache(media_path: str, transcript: Dict) -> Path:
-    cache_path = _transcript_cache_path(media_path)
+def _write_srt_cache(media_path: str, transcript: Dict, out_dir: Optional[str] = None) -> Path:
+    cache_path = _transcript_cache_path(media_path, out_dir=out_dir)
     lines = []
     for idx, segment in enumerate(transcript.get("segments", []), start=1):
         start = _format_srt_timestamp(float(segment["start"]))
@@ -81,6 +96,230 @@ def _load_srt_cache(cache_path: Path) -> Dict:
     return {"duration": duration, "segments": segments}
 
 
+def _ffmpeg_cmd() -> str:
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg:
+        return ffmpeg
+
+    try:
+        import imageio_ffmpeg  # type: ignore
+    except ImportError as e:
+        raise RuntimeError(
+            "Sarvam transcription needs ffmpeg to split audio. Install ffmpeg on PATH "
+            "or install imageio-ffmpeg with:\n"
+            "    pip install imageio-ffmpeg"
+        ) from e
+
+    return imageio_ffmpeg.get_ffmpeg_exe()
+
+
+def _wav_duration(path: Path) -> float:
+    with wave.open(str(path), "rb") as wav:
+        frames = wav.getnframes()
+        rate = wav.getframerate()
+        return frames / float(rate or 1)
+
+
+def _split_audio_for_sarvam(media_path: str, work_dir: Path) -> List[Path]:
+    segment_seconds = max(5.0, min(float(SARVAM_CHUNK_SECONDS), 29.0))
+    pattern = work_dir / "chunk_%04d.wav"
+    cmd = [
+        _ffmpeg_cmd(), "-y", "-loglevel", "error",
+        "-i", media_path,
+        "-vn",
+        "-ac", "1",
+        "-ar", "16000",
+        "-c:a", "pcm_s16le",
+        "-f", "segment",
+        "-segment_time", f"{segment_seconds:.3f}",
+        "-reset_timestamps", "1",
+        str(pattern),
+    ]
+    subprocess.run(cmd, check=True)
+    chunks = sorted(work_dir.glob("chunk_*.wav"))
+    if not chunks:
+        raise RuntimeError("ffmpeg produced no audio chunks for Sarvam transcription.")
+    return chunks
+
+
+def _sarvam_language(language: Optional[str]) -> str:
+    if not language:
+        return SARVAM_LANGUAGE_CODE
+    if "-" in language:
+        return language
+    language_map = {
+        "bn": "bn-IN",
+        "en": "en-IN",
+        "gu": "gu-IN",
+        "hi": "hi-IN",
+        "kn": "kn-IN",
+        "ml": "ml-IN",
+        "mr": "mr-IN",
+        "od": "od-IN",
+        "or": "od-IN",
+        "pa": "pa-IN",
+        "ta": "ta-IN",
+        "te": "te-IN",
+    }
+    return language_map.get(language.lower(), language)
+
+
+def _post_sarvam_chunk(chunk_path: Path, language: Optional[str]) -> Dict:
+    import requests
+
+    url = f"{SARVAM_BASE_URL}/speech-to-text"
+    data = {
+        "model": SARVAM_STT_MODEL,
+        "mode": SARVAM_STT_MODE,
+        "language_code": _sarvam_language(language),
+        "with_timestamps": "true",
+    }
+    headers = {"api-subscription-key": require_sarvam_key()}
+
+    with chunk_path.open("rb") as fh:
+        response = requests.post(
+            url,
+            headers=headers,
+            data=data,
+            files={"file": (chunk_path.name, fh, "audio/wav")},
+            timeout=120,
+        )
+    try:
+        response.raise_for_status()
+    except requests.HTTPError as e:
+        raise RuntimeError(f"Sarvam transcription failed: {response.text}") from e
+    return response.json()
+
+
+def _payload_text(payload: Dict) -> str:
+    for key in ("transcript", "text", "output", "transcription"):
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _timestamp_candidates(payload: Dict) -> List[Dict]:
+    candidates = []
+    top = payload.get("timestamps")
+    if isinstance(top, dict):
+        candidates.append(top)
+        nested = top.get("timestamps")
+        if isinstance(nested, dict):
+            candidates.append(nested)
+    nested_top = payload.get("timestamp")
+    if isinstance(nested_top, dict):
+        candidates.append(nested_top)
+    return candidates
+
+
+def _items_from_timestamp_block(block: Dict) -> tuple[str, List[Dict]]:
+    starts = block.get("start_time_seconds") or block.get("start_times") or block.get("starts")
+    ends = block.get("end_time_seconds") or block.get("end_times") or block.get("ends")
+
+    label = "words"
+    texts = block.get("chunks")
+    if texts is not None:
+        label = "chunks"
+    else:
+        texts = block.get("words") or block.get("texts")
+
+    if not (isinstance(texts, list) and isinstance(starts, list) and isinstance(ends, list)):
+        return label, []
+
+    items = []
+    for text, start, end in zip(texts, starts, ends):
+        try:
+            item = {
+                "start": float(start),
+                "end": float(end),
+                "text": str(text).strip(),
+            }
+        except (TypeError, ValueError):
+            continue
+        if item["text"] and item["end"] > item["start"]:
+            items.append(item)
+    return label, items
+
+
+def _merge_word_items(items: List[Dict], offset: float) -> List[Dict]:
+    merged = []
+    current_text: List[str] = []
+    current_start: Optional[float] = None
+    current_end = 0.0
+
+    def flush() -> None:
+        nonlocal current_text, current_start, current_end
+        if current_start is not None and current_text:
+            merged.append(
+                {
+                    "start": offset + current_start,
+                    "end": offset + current_end,
+                    "text": " ".join(current_text).strip(),
+                }
+            )
+        current_text = []
+        current_start = None
+        current_end = 0.0
+
+    for item in items:
+        if current_start is None:
+            current_start = float(item["start"])
+        current_end = float(item["end"])
+        token = str(item["text"]).strip()
+        current_text.append(token)
+        elapsed = current_end - current_start
+        if elapsed >= 8.0 or token.endswith((".", "?", "!", "।")):
+            flush()
+
+    flush()
+    return merged
+
+
+def _segments_from_sarvam_payload(payload: Dict, offset: float, chunk_duration: float) -> List[Dict]:
+    for block in _timestamp_candidates(payload):
+        label, items = _items_from_timestamp_block(block)
+        if not items:
+            continue
+        if label == "words":
+            return _merge_word_items(items, offset)
+        return [
+            {
+                "start": offset + float(item["start"]),
+                "end": offset + float(item["end"]),
+                "text": str(item["text"]).strip(),
+            }
+            for item in items
+        ]
+
+    text = _payload_text(payload)
+    if not text:
+        return []
+    return [{"start": offset, "end": offset + chunk_duration, "text": text}]
+
+
+def _transcribe_sarvam(media_path: str, language: Optional[str] = None) -> Dict:
+    print(
+        f"[transcribe/sarvam] model={SARVAM_STT_MODEL} language={_sarvam_language(language)}",
+        flush=True,
+    )
+    segments: List[Dict] = []
+    offset = 0.0
+    with tempfile.TemporaryDirectory(prefix="sarvam-stt-") as tmp:
+        chunks = _split_audio_for_sarvam(media_path, Path(tmp))
+        print(f"[transcribe/sarvam] split audio into {len(chunks)} chunk(s)", flush=True)
+        for index, chunk_path in enumerate(chunks, 1):
+            chunk_duration = _wav_duration(chunk_path)
+            print(f"[transcribe/sarvam] chunk {index}/{len(chunks)}", flush=True)
+            payload = _post_sarvam_chunk(chunk_path, language)
+            segments.extend(_segments_from_sarvam_payload(payload, offset, chunk_duration))
+            offset += chunk_duration
+
+    duration = segments[-1]["end"] if segments else offset
+    print(f"[transcribe/sarvam] {len(segments)} segments, {duration:.0f}s of audio", flush=True)
+    return {"duration": duration, "segments": segments}
+
+
 def _resolve_device() -> str:
     if LOCAL_WHISPER_DEVICE != "auto":
         return LOCAL_WHISPER_DEVICE
@@ -95,9 +334,9 @@ def _resolve_device() -> str:
     return "cpu"
 
 
-def transcribe_local(media_path: str, language: Optional[str] = None) -> Dict:
-    """Run faster-whisper on a local file path, caching the result as .srt."""
-    cache_path = _transcript_cache_path(media_path)
+def transcribe_local(media_path: str, language: Optional[str] = None, out_dir: Optional[str] = None) -> Dict:
+    """Run the selected local transcriber on a local file path, caching as .srt."""
+    cache_path = _transcript_cache_path(media_path, out_dir=out_dir)
     if cache_path.exists():
         source_mtime = os.path.getmtime(media_path)
         cache_mtime = cache_path.stat().st_mtime
@@ -115,6 +354,17 @@ def transcribe_local(media_path: str, language: Optional[str] = None) -> Dict:
                     flush=True,
                 )
                 return cached
+
+    provider = (TRANSCRIBER_PROVIDER or "whisper").strip().lower()
+    if provider == "sarvam":
+        transcript = _transcribe_sarvam(media_path, language=language)
+        cache_path = _write_srt_cache(media_path, transcript, out_dir=out_dir)
+        print(f"[transcribe/sarvam] wrote cache: {cache_path}", flush=True)
+        return transcript
+    if provider != "whisper":
+        raise RuntimeError(
+            f"Unknown TRANSCRIBER_PROVIDER={provider!r}. Use 'whisper' or 'sarvam'."
+        )
 
     try:
         from faster_whisper import WhisperModel  # type: ignore
@@ -157,6 +407,6 @@ def transcribe_local(media_path: str, language: Optional[str] = None) -> Dict:
     duration = float(getattr(info, "duration", 0.0)) or (segments[-1]["end"] if segments else 0.0)
     print(f"[transcribe/local] {len(segments)} segments, {duration:.0f}s of audio", flush=True)
     transcript = {"duration": duration, "segments": segments}
-    cache_path = _write_srt_cache(media_path, transcript)
+    cache_path = _write_srt_cache(media_path, transcript, out_dir=out_dir)
     print(f"[transcribe/local] wrote cache: {cache_path}", flush=True)
     return transcript

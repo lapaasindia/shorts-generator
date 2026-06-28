@@ -1,0 +1,14 @@
+.git
+.env
+venv/
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+output/
+web_output/
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.avi

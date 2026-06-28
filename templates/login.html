@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Team Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='quickdark1') }}">
+  </head>
+  <body>
+    <main class="login-shell">
+      <section class="login-panel">
+        <p class="kicker">AI YouTube Shorts Generator</p>
+        <h1>Team Login</h1>
+        <form method="post" class="login-form">
+          <div class="field">
+            <label for="username">Username</label>
+            <input id="username" name="username" type="text" value="team" autocomplete="username" required>
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+          </div>
+          {% if error %}
+            <p class="form-error">{{ error }}</p>
+          {% endif %}
+          <button class="run-button" type="submit">
+            <span class="run-icon" aria-hidden="true"></span>
+            Sign In
+          </button>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

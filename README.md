@@ -41,6 +41,9 @@ Built for creators, agencies, and developers who don't want to pay $20–$300/mo
 - **🔀 Two Modes — API (fast) or Local (offline)**: Default `--mode api` uses MuAPI for download/transcription/cropping; `--mode local` runs entirely on your machine with `yt-dlp`, `faster-whisper`, and `ffmpeg`/`opencv`, and lets you pick OpenAI or Gemini for highlight ranking
 - **🤖 Virality-Aware Highlight Selection**: Clips ranked on hooks, emotional peaks, opinion bombs, revelation moments, conflict, quotable lines, story peaks, and practical value — not just generic "interesting"
 - **📈 Score + Hook + Reason for Every Clip**: Each highlight comes with a viral score, an opening hook line, and a one-sentence explanation of why it works
+- **Hook-First Non-Linear Edits**: The strongest source-time line can play first, then jump back to setup and forward to payoff while captions stay synchronized
+- **20 Reel Templates**: Render the same editorial reel across viral, authority, business, creator, cinematic, monochrome, editorial, and story-led styles
+- **Burned-In Hooks + Captions**: Local renders include a top hook, readable lower-third captions, H.264 video, AAC audio, and loudness normalization
 - **🎤 Whisper Transcription, Your Choice**: Cloud (`/openai-whisper` via MuAPI) or local (`faster-whisper`, CPU or CUDA) — same downstream output shape
 - **🧩 Long-Video Aware**: Videos over 30 minutes are auto-chunked with overlap so nothing gets missed
 - **♻️ Smart Dedupe**: Overlapping highlights are collapsed by score so you never get two near-duplicate clips
@@ -110,6 +113,30 @@ Don't want to self-host? The [AI Clipping API](https://muapi.ai/playground/ai-cl
 python main.py "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
+### Web app
+
+Local development:
+
+```bash
+python web_app.py
+```
+
+Open `http://127.0.0.1:7860`, then paste a YouTube URL or upload a local
+video file. The web app runs the same local pipeline as the CLI and writes each
+job to `./web_output`. Select one or more of the 20 templates; choosing **All
+20** automatically plans one editorial reel rendered in every style. The clip
+count has no fixed UI ceiling.
+
+Production/team hosting:
+
+```bash
+cp .env.example .env
+docker compose up --build -d
+```
+
+See [`DEPLOYMENT.md`](DEPLOYMENT.md) for Docker, hosted platform, persistent
+storage, and team login setup.
+
 ### Single video (Local mode — runs offline except for the LLM call)
 
 ```bash
@@ -147,6 +174,8 @@ result = generate_shorts(
     num_clips=5,
     aspect_ratio="9:16",
     mode="local",
+    template_ids=["yellow-pop", "clean-authority", "fanpage-gold"],
+    nonlinear_edit=True,
 )
 for short in result["shorts"]:
     print(short["score"], short["title"], short["clip_url"])
@@ -198,8 +227,10 @@ xargs -a urls.txt -I{} python main.py "{}"
 4. **Long-video chunking**: Videos > 30 min are split into 20-min overlapping chunks
 5. **Highlight ranking**: An LLM scans the transcript through a virality framework — hook moments, emotional peaks, opinion bombs, revelations, conflict, quotables, story peaks, practical value — and emits ranked candidates with scores 0–100
 6. **Dedupe**: Overlapping candidates are collapsed by score (>50% overlap → keep the higher score)
-7. **Top-N selection**: The top `--num-clips` candidates are selected
-8. **Auto-crop**: Each highlight is rendered as a vertical short at the requested aspect ratio
+7. **Editorial plan**: The strongest internal line becomes a cold open, followed by source-time context and payoff segments
+8. **Top-N selection**: The top `--num-clips` candidates are selected
+9. **Auto-crop**: Each highlight is face-tracked and rendered vertically at the requested aspect ratio
+10. **Template render**: Every selected template burns in the hook and synchronized captions, then normalizes audio for social platforms
 
 **Output**: a list of mp4 URLs plus, for each clip, its title, viral score, hook sentence, and a one-line reason explaining why it should perform.
 

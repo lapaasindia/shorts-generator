@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: ai-shorts-generator
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    plan: starter
+    disk:
+      name: shorts-output
+      mountPath: /data
+      sizeGB: 10
+    envVars:
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: WEB_AUTH_PASSWORD
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: TRANSCRIBER_PROVIDER
+        value: sarvam
+      - key: LLM_PROVIDER
+        value: heuristic
+      - key: WEB_AUTH_USERNAME
+        value: team
+      - key: WEB_OUTPUT_DIR
+        value: /data/web_output
+      - key: WEB_WORKERS
+        value: "1"
+      - key: WEB_THREADS
+        value: "4"
+      - key: WEB_TIMEOUT_SECONDS
+        value: "3600"
+      - key: WEB_MAX_UPLOAD_MB
+        value: "2048"
+      - key: COOKIE_SECURE
+        value: "true"

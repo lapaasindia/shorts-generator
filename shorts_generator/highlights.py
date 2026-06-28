@@ -44,11 +44,14 @@ HIGHLIGHT_SYSTEM_PROMPT = """You are an elite short-form video editor who has st
 {virality_criteria}
 
 Content type: {content_type} | Density: {density}
+Viewer focus: {focus_instruction}
 
 Your task: identify the most viral-worthy highlights from the transcript.
 
 Rules:
-- Every highlight must open with a strong HOOK — a line that grabs attention within the first 3 seconds
+- Find the strongest HOOK anywhere inside the source window. The editor will move that line to the front, then jump back to context.
+- Prefer hooks with a hard claim, number, warning, reversal, status threat, money angle, or quotable opinion.
+- Return hook_start_time and hook_end_time for the exact source-time sentence used as the cold open.
 - Duration sweet spot: 45-90 seconds. Go shorter (20-44s) only for a perfect standalone one-liner. Go longer (91-180s) only when a story arc needs full context to land
 - Never cut mid-sentence or mid-thought — each clip must feel complete and self-contained
 - Clips must not overlap significantly with each other
@@ -58,7 +61,7 @@ Rules:
 - Explain in one sentence why this clip is viral ("virality_reason")
 
 Respond ONLY with valid JSON (no markdown, no explanation):
-{{"highlights":[{{"title":"string","start_time":float,"end_time":float,"score":int,"hook_sentence":"string","virality_reason":"string"}}]}}"""
+{{"highlights":[{{"title":"string","start_time":float,"end_time":float,"hook_start_time":float,"hook_end_time":float,"score":int,"hook_sentence":"string","virality_reason":"string"}}]}}"""
 
 
 CHUNK_SIZE_SECONDS = 1200       # 20-min chunks for long videos
@@ -151,6 +154,14 @@ def _sanitize_highlights(raw_highlights: object, duration: float) -> List[Dict]:
                 "title": str(item.get("title") or "Untitled Highlight").strip(),
                 "start_time": start,
                 "end_time": end,
+                "hook_start_time": max(
+                    start,
+                    min(end, _coerce_float(item.get("hook_start_time"), default=start)),
+                ),
+                "hook_end_time": max(
+                    start,
+                    min(end, _coerce_float(item.get("hook_end_time"), default=start + 5.0)),
+                ),
                 "score": max(0, min(100, _coerce_int(item.get("score"), default=0))),
                 "hook_sentence": str(item.get("hook_sentence") or "").strip(),
                 "virality_reason": str(item.get("virality_reason") or "").strip(),
@@ -204,16 +215,22 @@ def call_highlight_api(
     num_clips: int,
     is_chunk: bool = False,
     llm_fn: LLMFn = call_muapi_llm,
+    focus_prompt: Optional[str] = None,
 ) -> Dict:
     # Ask for ~2× the user's target so dedupe has headroom, but cap so the model
     # doesn't have to generate a huge JSON payload (which times out gpt-5-mini).
     target = max(num_clips * 2, 5)
     natural_max = max(2 if is_chunk else 3, int(duration / 90))
-    min_clips = min(target, natural_max, 8)
+    min_clips = min(target, natural_max)
     system = HIGHLIGHT_SYSTEM_PROMPT.format(
         virality_criteria=VIRALITY_CRITERIA,
         content_type=content_info.get("content_type", "other"),
         density=content_info.get("density", "medium"),
+        focus_instruction=(
+            f"Prioritize moments related to this request when they are genuinely strong: {focus_prompt.strip()}"
+            if focus_prompt and focus_prompt.strip()
+            else "No extra topic constraint; choose the strongest moments across the whole source."
+        ),
         num_clips_instruction=f"Generate at least {min_clips} highlights",
     )
     base_prompt = f"{system}\n\nTranscript:\n{transcript_text}"
@@ -239,7 +256,7 @@ def call_highlight_api(
             prompt = (
                 base_prompt
                 + "\n\nIMPORTANT: Return ONLY valid JSON with a top-level 'highlights' array."
-                + " Each item must include: title, start_time, end_time, score, hook_sentence, virality_reason."
+                + " Each item must include: title, start_time, end_time, hook_start_time, hook_end_time, score, hook_sentence, virality_reason."
                 + " No markdown fences, no commentary."
             )
 
@@ -273,6 +290,7 @@ def get_highlights(
     transcript: Dict,
     num_clips: int = 3,
     llm_fn: Optional[LLMFn] = None,
+    focus_prompt: Optional[str] = None,
 ) -> Dict:
     """Main entry point — returns {highlights: [...]} sorted by score.
 
@@ -292,7 +310,15 @@ def get_highlights(
             offset = chunk.get("_offset", 0)
             text = build_transcript_text(chunk)
             print(f"[highlights] chunk {i + 1}/{len(chunks)} (offset {offset:.0f}s)", flush=True)
-            result = call_highlight_api(text, content_info, chunk["duration"], num_clips=num_clips, is_chunk=True, llm_fn=llm_fn)
+            result = call_highlight_api(
+                text,
+                content_info,
+                chunk["duration"],
+                num_clips=num_clips,
+                is_chunk=True,
+                llm_fn=llm_fn,
+                focus_prompt=focus_prompt,
+            )
             for h in result.get("highlights", []):
                 h["start_time"] = float(h["start_time"]) + offset
                 h["end_time"] = float(h["end_time"]) + offset
@@ -300,7 +326,14 @@ def get_highlights(
         highlights = dedupe_highlights(all_highlights)
     else:
         text = build_transcript_text(transcript)
-        result = call_highlight_api(text, content_info, duration, num_clips=num_clips, llm_fn=llm_fn)
+        result = call_highlight_api(
+            text,
+            content_info,
+            duration,
+            num_clips=num_clips,
+            llm_fn=llm_fn,
+            focus_prompt=focus_prompt,
+        )
         highlights = dedupe_highlights(result.get("highlights", []))
 
     return {"highlights": highlights}

@@ -11,11 +11,18 @@ POLL_INTERVAL_SECONDS = float(os.getenv("MUAPI_POLL_INTERVAL", "5"))
 POLL_TIMEOUT_SECONDS = float(os.getenv("MUAPI_POLL_TIMEOUT", "600"))
 
 # Local-mode (--mode local) settings — only consulted when running offline.
+TRANSCRIBER_PROVIDER = os.getenv("TRANSCRIBER_PROVIDER", "whisper").strip().lower()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").strip().lower()
+SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "").strip()
+SARVAM_BASE_URL = os.getenv("SARVAM_BASE_URL", "https://api.sarvam.ai").rstrip("/")
+SARVAM_STT_MODEL = os.getenv("SARVAM_STT_MODEL", "saaras:v3")
+SARVAM_STT_MODE = os.getenv("SARVAM_STT_MODE", "transcribe")
+SARVAM_LANGUAGE_CODE = os.getenv("SARVAM_LANGUAGE_CODE", "unknown")
+SARVAM_CHUNK_SECONDS = float(os.getenv("SARVAM_CHUNK_SECONDS", "25"))
 LOCAL_WHISPER_MODEL = os.getenv("LOCAL_WHISPER_MODEL", "base")
 LOCAL_WHISPER_DEVICE = os.getenv("LOCAL_WHISPER_DEVICE", "auto")  # auto / cpu / cuda
 LOCAL_OUTPUT_DIR = os.getenv("LOCAL_OUTPUT_DIR", "output")
@@ -65,3 +72,11 @@ def require_gemini_key() -> str:
             "Add it to your .env or export it, or switch LLM_PROVIDER back to openai."
         )
     return GEMINI_API_KEY
+
+
+def require_sarvam_key() -> str:
+    if not SARVAM_API_KEY:
+        raise RuntimeError(
+            "SARVAM_API_KEY is not set. Add it to your .env file or export it as an env var."
+        )
+    return SARVAM_API_KEY

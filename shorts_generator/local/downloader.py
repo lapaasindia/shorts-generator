@@ -5,6 +5,7 @@ directly off disk.
 """
 import os
 import re
+import shutil
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 from typing import Optional
@@ -21,6 +22,19 @@ def _import_ytdlp():
             "    pip install -r requirements-local.txt"
         ) from e
     return yt_dlp
+
+
+def _ffmpeg_location() -> Optional[str]:
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg:
+        return ffmpeg
+
+    try:
+        import imageio_ffmpeg  # type: ignore
+    except ImportError:
+        return None
+
+    return imageio_ffmpeg.get_ffmpeg_exe()
 
 
 def _format_for(fmt: str) -> str:
@@ -119,6 +133,9 @@ def download_youtube_local(video_url: str, fmt: str = "720", out_dir: Optional[s
         "no_warnings": True,
         "noprogress": True,
     }
+    ffmpeg_location = _ffmpeg_location()
+    if ffmpeg_location:
+        ydl_opts["ffmpeg_location"] = ffmpeg_location
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(video_url, download=True)
