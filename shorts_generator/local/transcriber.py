@@ -135,7 +135,7 @@ def _split_audio_for_sarvam(media_path: str, work_dir: Path) -> List[Path]:
         "-reset_timestamps", "1",
         str(pattern),
     ]
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, stdin=subprocess.DEVNULL, check=True)
     chunks = sorted(work_dir.glob("chunk_*.wav"))
     if not chunks:
         raise RuntimeError("ffmpeg produced no audio chunks for Sarvam transcription.")
@@ -380,7 +380,14 @@ def transcribe_local(media_path: str, language: Optional[str] = None, out_dir: O
 
     from ..config import LOCAL_WHISPER_VAD_FILTER, LOCAL_WHISPER_VAD_PARAMETERS
 
-    model = WhisperModel(LOCAL_WHISPER_MODEL, device=device, compute_type=compute_type)
+    data_dir = os.getenv("DATA_DIR", "data")
+    download_root = os.path.join(data_dir, "models", "whisper")
+    model = WhisperModel(
+        LOCAL_WHISPER_MODEL,
+        device=device,
+        compute_type=compute_type,
+        download_root=download_root,
+    )
 
     transcribe_kwargs = {
         "audio": media_path,

@@ -17,8 +17,8 @@ RUN apt-get update \
         libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt requirements-web.txt ./
-RUN pip install --no-cache-dir -r requirements-web.txt
+COPY requirements.txt requirements-web.txt requirements-local.txt ./
+RUN pip install --no-cache-dir -r requirements-local.txt gunicorn
 
 COPY . .
 

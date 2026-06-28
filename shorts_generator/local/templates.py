@@ -554,7 +554,7 @@ def _upscale_video(ffmpeg: str, source_path: str, out_path: str, aspect_ratio: s
         "+faststart",
         out_path,
     ]
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, stdin=subprocess.DEVNULL, check=True)
     return out_path
 
 
@@ -613,7 +613,7 @@ def render_template_variant(
         render_path,
     ]
     try:
-        subprocess.run(cmd, check=True)
+        subprocess.run(cmd, stdin=subprocess.DEVNULL, check=True)
         if upscale:
             _upscale_video(ffmpeg, render_path, out_path, aspect_ratio)
     finally:

@@ -279,6 +279,10 @@ def _load_jobs_from_disk() -> None:
             if job.get("status") in {"queued", "running"}:
                 job["status"] = "interrupted"
                 job["error"] = "Server restarted before this job finished."
+                try:
+                    path.write_text(json.dumps(job, indent=2, default=str), encoding="utf-8")
+                except OSError:
+                    pass
             jobs[job_id] = job
 
 

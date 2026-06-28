@@ -58,7 +58,7 @@ def _cut_subclip(source_path: str, start: float, end: float, out_path: str) -> s
         "-movflags", "+faststart",
         out_path,
     ]
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, stdin=subprocess.DEVNULL, check=True)
     return out_path
 
 
@@ -95,7 +95,7 @@ def _assemble_parts(source_path: str, parts: List[Dict], out_path: str) -> str:
             "-f", "concat", "-safe", "0", "-i", manifest_path,
             "-c", "copy", "-movflags", "+faststart", out_path,
         ]
-        subprocess.run(cmd, check=True)
+        subprocess.run(cmd, stdin=subprocess.DEVNULL, check=True)
     finally:
         if os.path.exists(manifest_path):
             os.remove(manifest_path)
@@ -148,12 +148,19 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str) -> str:
             break
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(40, 40))
+
+        # Downscale for much faster CPU face detection (30x-50x speedup)
+        detect_w = 320
+        detect_h = int(src_h * (detect_w / src_w)) if src_w > 0 else 180
+        small_gray = cv2.resize(gray, (detect_w, detect_h))
+
+        faces = face_cascade.detectMultiScale(small_gray, scaleFactor=1.1, minNeighbors=5, minSize=(20, 20))
         if len(faces) > 0:
             # Pick the largest face — usually the speaker.
             x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
-            cx = x + w // 2
-            cy = y + h // 2
+            scale = src_w / float(detect_w)
+            cx = int((x + w // 2) * scale)
+            cy = int((y + h // 2) * scale)
             if last_center is None:
                 last_center = (cx, cy)
             else:
@@ -185,7 +192,7 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str) -> str:
         "-shortest",
         out_path,
     ]
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, stdin=subprocess.DEVNULL, check=True)
     os.remove(silent_path)
     return out_path
 
