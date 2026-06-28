@@ -28,7 +28,7 @@ from flask import (
     url_for,
 )
 from werkzeug.utils import secure_filename
-from urllib.parse import quote as requests_quote
+from urllib.parse import quote as requests_quote, urlparse
 
 # Load .env before anything else
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -44,6 +44,7 @@ DATA_DIR = Path(os.getenv("DATA_DIR", BASE_DIR)).resolve()
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 WEB_OUTPUT_DIR = Path(os.getenv("WEB_OUTPUT_DIR", DATA_DIR / "web_output")).resolve()
 USERS_FILE = DATA_DIR / "users.json"
+YOUTUBE_COOKIE_FILE = Path(os.getenv("YTDLP_COOKIE_FILE") or DATA_DIR / "youtube_cookies.txt").resolve()
 UPLOAD_EXTENSIONS = {
     ".mp4", ".mov", ".m4v", ".mkv", ".webm", ".avi",
     ".mp3", ".wav", ".m4a", ".aac",
@@ -122,6 +123,13 @@ def _find_user_by_identifier(identifier: str, users: Dict):
             return username, user
     return None, None
 
+def _current_user_record() -> Dict:
+    users = _load_users()
+    return users.get(_current_user() or "", {})
+
+def _current_user_is_admin() -> bool:
+    return _current_user_record().get("role", "member") == "admin"
+
 def _migrate_env_user() -> None:
     """On first run, migrate WEB_AUTH_USERNAME/PASSWORD into users.json."""
     env_user = os.getenv("WEB_AUTH_USERNAME", "").strip()
@@ -171,6 +179,38 @@ def _startup_warnings() -> list:
     if generator_config.LLM_PROVIDER == "gemini" and not generator_config.GEMINI_API_KEY:
         warnings.append("LLM_PROVIDER=gemini but GEMINI_API_KEY is not set.")
     return warnings
+
+def _is_youtube_url(source: str) -> bool:
+    parsed = urlparse(source)
+    host = (parsed.netloc or "").lower()
+    if host.startswith("www."):
+        host = host[4:]
+    return host in {"youtube.com", "m.youtube.com", "youtu.be", "youtube-nocookie.com"} or host.endswith(".youtube.com")
+
+def _youtube_cookie_status() -> Dict:
+    cookie_file_exists = YOUTUBE_COOKIE_FILE.exists() and YOUTUBE_COOKIE_FILE.stat().st_size > 0
+    cookie_text_set = bool(os.getenv("YTDLP_COOKIES_TEXT", "").strip())
+    browser_cookie_source = os.getenv("YTDLP_COOKIES_FROM_BROWSER", "").strip()
+    api_mode_ready = bool(
+        generator_config.MUAPI_API_KEY
+        and generator_config.WEB_PIPELINE_MODE in {"api", "auto"}
+    )
+    return {
+        "ready": bool(cookie_file_exists or cookie_text_set or browser_cookie_source or api_mode_ready),
+        "file_exists": cookie_file_exists,
+        "file_path": str(YOUTUBE_COOKIE_FILE),
+        "env_text": cookie_text_set,
+        "browser": browser_cookie_source,
+        "api_mode_ready": api_mode_ready,
+        "updated_at": datetime.fromtimestamp(YOUTUBE_COOKIE_FILE.stat().st_mtime, timezone.utc).isoformat().replace("+00:00", "Z")
+        if cookie_file_exists else None,
+    }
+
+def _youtube_setup_message() -> str:
+    return (
+        "YouTube download setup is required on this hosted server. "
+        "Open Status and save YouTube cookies once, or configure MUAPI_API_KEY with WEB_PIPELINE_MODE=api."
+    )
 
 _migrate_env_user()
 STARTUP_WARNINGS = _startup_warnings()
@@ -395,6 +435,8 @@ def _run_job(
             pipeline_mode = "api" if generator_config.MUAPI_API_KEY and source.startswith(("http://", "https://")) else "local"
         if pipeline_mode not in {"api", "local"}:
             pipeline_mode = "local"
+        if pipeline_mode == "api" and not generator_config.MUAPI_API_KEY:
+            pipeline_mode = "local"
 
         with redirect_stdout(output), redirect_stderr(output):
             result = generate_shorts(
@@ -423,15 +465,21 @@ def _run_job(
         )
         _append_log(job_id, "Job complete")
     except Exception as exc:
-        _append_log(job_id, output.getvalue())
+        error_text = str(exc)
+        youtube_setup_error = (
+            error_text.startswith("YouTube blocked this server download")
+            or error_text.startswith("YouTube rejected the server download")
+        )
+        if not youtube_setup_error:
+            _append_log(job_id, output.getvalue())
         if os.getenv("WEB_SHOW_TRACEBACKS", "false").strip().lower() == "true":
             _append_log(job_id, traceback.format_exc())
         else:
-            _append_log(job_id, f"ERROR: {exc}")
+            _append_log(job_id, f"ERROR: {error_text}")
         _update_job(
             job_id,
             status="failed",
-            error=str(exc),
+            error=error_text,
             completed_at=_utc_now(),
         )
 
@@ -476,9 +524,12 @@ def status_page():
     social = social_publish.configured_platforms()
     with jobs_lock:
         job_count = len(jobs)
+    youtube_status = _youtube_cookie_status()
     checks = [
         ("Web server", True, "Running"),
         ("Templates", len(list_templates()) > 0, f"{len(list_templates())} styles loaded"),
+        ("YouTube downloads", youtube_status["ready"],
+         "Ready" if youtube_status["ready"] else "Needs cookies or API mode"),
         ("Transcriber", True, generator_config.TRANSCRIBER_PROVIDER),
         ("AI highlights", generator_config.LLM_PROVIDER != "heuristic",
          generator_config.LLM_PROVIDER + (" (set OPENAI_API_KEY/GEMINI_API_KEY for AI)"
@@ -494,7 +545,34 @@ def status_page():
         job_count=job_count,
         output_dir=str(WEB_OUTPUT_DIR),
         user=_current_user(),
+        is_admin=_current_user_is_admin(),
+        youtube_status=youtube_status,
+        youtube_message=request.args.get("youtube"),
+        youtube_error=request.args.get("youtube_error"),
     )
+
+
+@app.post("/settings/youtube-cookies")
+@login_required
+def save_youtube_cookies():
+    if not _current_user_is_admin():
+        return jsonify({"error": "Only workspace admins can update YouTube cookies."}), 403
+
+    cookies_text = (request.form.get("cookies_text") or "").strip()
+    if not cookies_text:
+        return redirect(url_for("status_page", youtube_error="Paste YouTube cookies before saving."))
+
+    normalized = cookies_text.replace("\\n", "\n")
+    if "youtube.com" not in normalized and ".youtube.com" not in normalized:
+        return redirect(url_for("status_page", youtube_error="Those cookies do not look like YouTube cookies."))
+
+    YOUTUBE_COOKIE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    YOUTUBE_COOKIE_FILE.write_text(normalized, encoding="utf-8")
+    try:
+        YOUTUBE_COOKIE_FILE.chmod(0o600)
+    except OSError:
+        pass
+    return redirect(url_for("status_page", youtube="YouTube cookies saved. Try the link again."))
 
 
 @app.get("/api/me")
@@ -657,6 +735,9 @@ def create_job():
         source = str(upload_path)
     elif not source:
         return jsonify({"error": "Enter a video URL."}), 400
+
+    if source_type == "url" and _is_youtube_url(source) and not _youtube_cookie_status()["ready"]:
+        return jsonify({"error": _youtube_setup_message()}), 400
 
     with jobs_lock:
         jobs[job_id] = {

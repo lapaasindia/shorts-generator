@@ -204,6 +204,10 @@ For local desktop runs you can also use `YTDLP_COOKIES_FROM_BROWSER=chrome`.
 If `MUAPI_API_KEY` is configured, hosted web jobs can use `WEB_PIPELINE_MODE=api`
 to avoid server-side `yt-dlp` for YouTube links.
 
+In the hosted web app, workspace admins can also open `/status` and save
+Netscape-format YouTube cookies once. They are stored in
+`DATA_DIR/youtube_cookies.txt` and reused by future YouTube URL jobs.
+
 ### Batch processing
 
 Create a `urls.txt` file with one URL per line, then:

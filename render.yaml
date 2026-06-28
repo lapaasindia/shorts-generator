@@ -24,6 +24,8 @@ services:
         value: team
       - key: DATA_DIR
         value: /data
+      - key: YTDLP_COOKIE_FILE
+        value: /data/youtube_cookies.txt
       - key: WEB_WORKERS
         value: "1"
       - key: WEB_THREADS

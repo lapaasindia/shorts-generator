@@ -49,6 +49,19 @@
         padding:14px 16px;font-size:12px;color:var(--coral);}
       .warnbox strong{display:block;margin-bottom:6px;}
       .warnbox ul{margin:0;padding-left:18px;}
+      .setup-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px;}
+      .setup-card h2{font-size:15px;margin-bottom:5px;}
+      .setup-card p{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:13px;}
+      .setup-card textarea{width:100%;min-height:118px;resize:vertical;border:1px solid var(--line);
+        border-radius:8px;background:var(--panel-strong);color:var(--text);padding:12px;font:12px ui-monospace,Menlo,monospace;}
+      .setup-card textarea:focus{outline:2px solid var(--accent);border-color:var(--accent);}
+      .setup-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;}
+      .save-btn{border:0;border-radius:8px;background:var(--accent);color:var(--black);font-weight:900;
+        padding:10px 14px;cursor:pointer;}
+      .setup-note{font-size:11px;color:var(--muted);word-break:break-all;}
+      .msg{border-radius:8px;padding:10px 12px;font-size:12px;font-weight:800;margin-bottom:12px;}
+      .msg.ok{background:rgba(214,255,69,.1);border:1px solid rgba(214,255,69,.25);color:var(--accent);}
+      .msg.err{background:rgba(255,107,94,.08);border:1px solid rgba(255,107,94,.25);color:var(--coral);}
     </style>
   </head>
   <body>
@@ -74,6 +87,27 @@
           <span class="tag {{ 'ok' if ok else 'warn' }}">{{ 'OK' if ok else 'Setup' }}</span>
         </div>
         {% endfor %}
+      </div>
+
+      <div class="setup-card">
+        <h2>YouTube download access</h2>
+        {% if youtube_message %}<div class="msg ok">{{ youtube_message }}</div>{% endif %}
+        {% if youtube_error %}<div class="msg err">{{ youtube_error }}</div>{% endif %}
+        <p>
+          Status: {{ "Ready" if youtube_status.ready else "Needs setup" }}
+          {% if youtube_status.updated_at %} · Updated {{ youtube_status.updated_at }}{% endif %}
+        </p>
+        {% if is_admin %}
+        <form method="post" action="{{ url_for('save_youtube_cookies') }}">
+          <textarea name="cookies_text" placeholder="# Netscape HTTP Cookie File&#10;.youtube.com&#9;TRUE&#9;/&#9;TRUE&#9;..."></textarea>
+          <div class="setup-actions">
+            <span class="setup-note">Saved on server as {{ youtube_status.file_path }}</span>
+            <button class="save-btn" type="submit">Save cookies</button>
+          </div>
+        </form>
+        {% else %}
+        <p>Ask a workspace admin to update YouTube cookies.</p>
+        {% endif %}
       </div>
 
       <div class="meta">

@@ -55,6 +55,11 @@ YTDLP_COOKIES_FROM_BROWSER=chrome
 WEB_PIPELINE_MODE=api
 ```
 
+Workspace admins can also open `/status`, paste the Netscape-format YouTube
+cookies, and save them to `/data/youtube_cookies.txt`. The app will block new
+YouTube URL jobs with a setup message until cookies or API mode are ready, so
+failed jobs no longer fill the run log with raw `yt-dlp` trace output.
+
 Keep `WEB_WORKERS=1` unless you replace the in-memory job tracker with Redis or
 a database. Multiple threads are fine and let the team poll/download while a
 render is running.

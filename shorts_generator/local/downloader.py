@@ -108,11 +108,22 @@ def _existing_download(out_dir: str, video_id: str) -> Optional[str]:
 
 def _cookie_file_from_env(out_dir: str) -> Optional[str]:
     """Resolve a yt-dlp cookies file from file path or raw env text."""
-    cookie_file = os.getenv("YTDLP_COOKIE_FILE", "").strip()
-    if cookie_file:
+    cookie_files = []
+    configured_cookie_file = os.getenv("YTDLP_COOKIE_FILE", "").strip()
+    if configured_cookie_file:
+        cookie_files.append(configured_cookie_file)
+
+    data_dir = os.getenv("DATA_DIR", "").strip()
+    if data_dir:
+        default_cookie_file = str(Path(data_dir) / "youtube_cookies.txt")
+        if default_cookie_file not in cookie_files:
+            cookie_files.append(default_cookie_file)
+
+    for cookie_file in cookie_files:
         if os.path.exists(cookie_file):
             return cookie_file
-        print(f"[download/local] YTDLP_COOKIE_FILE does not exist: {cookie_file}", flush=True)
+        if cookie_file == configured_cookie_file:
+            print(f"[download/local] YTDLP_COOKIE_FILE does not exist: {cookie_file}", flush=True)
 
     cookies_text = os.getenv("YTDLP_COOKIES_TEXT", "").strip()
     if not cookies_text:
