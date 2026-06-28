@@ -6,12 +6,12 @@ services:
     env_file:
       - .env
     environment:
-      WEB_OUTPUT_DIR: /data/web_output
+      DATA_DIR: /data
       TRANSCRIBER_PROVIDER: sarvam
       LLM_PROVIDER: heuristic
       COOKIE_SECURE: "false"
     volumes:
-      - shorts_output:/data/web_output
+      - shorts_data:/data
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:7860/healthz', timeout=5).read()"]
       interval: 30s
@@ -20,4 +20,4 @@ services:
       start_period: 20s
 
 volumes:
-  shorts_output:
+  shorts_data:

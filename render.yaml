@@ -22,8 +22,8 @@ services:
         value: heuristic
       - key: WEB_AUTH_USERNAME
         value: team
-      - key: WEB_OUTPUT_DIR
-        value: /data/web_output
+      - key: DATA_DIR
+        value: /data
       - key: WEB_WORKERS
         value: "1"
       - key: WEB_THREADS

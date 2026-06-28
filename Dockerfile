@@ -2,6 +2,7 @@ FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    DATA_DIR=/data \
     WEB_OUTPUT_DIR=/data/web_output \
     TRANSCRIBER_PROVIDER=sarvam \
     LLM_PROVIDER=heuristic

@@ -40,8 +40,10 @@ from shorts_generator import social_publish
 
 
 BASE_DIR = Path(__file__).resolve().parent
-WEB_OUTPUT_DIR = Path(os.getenv("WEB_OUTPUT_DIR", BASE_DIR / "web_output")).resolve()
-USERS_FILE = BASE_DIR / "users.json"
+DATA_DIR = Path(os.getenv("DATA_DIR", BASE_DIR)).resolve()
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+WEB_OUTPUT_DIR = Path(os.getenv("WEB_OUTPUT_DIR", DATA_DIR / "web_output")).resolve()
+USERS_FILE = DATA_DIR / "users.json"
 UPLOAD_EXTENSIONS = {
     ".mp4", ".mov", ".m4v", ".mkv", ".webm", ".avi",
     ".mp3", ".wav", ".m4a", ".aac",
@@ -471,12 +473,16 @@ def register():
 
     error = None
     success = None
+    form_username = ""
+    form_display = ""
 
     if request.method == "POST":
         username = (request.form.get("username") or "").strip().lower()
         password = request.form.get("password") or ""
         confirm  = request.form.get("confirm") or ""
         display  = (request.form.get("display") or username).strip()
+        form_username = username
+        form_display = display
 
         if not username or len(username) < 3:
             error = "Username must be at least 3 characters."
@@ -505,7 +511,8 @@ def register():
                 return redirect(url_for("index"))
 
     return render_template("login.html", mode="register", error=error, success=success,
-                           users_exist=_users_exist())
+                           users_exist=_users_exist(),
+                           form_username=form_username, form_display=form_display)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -672,9 +679,9 @@ def media(job_id: str, filename: str):
 
 
 # NOTE: social_connections.json stores live OAuth tokens — treat as a secret.
-SOCIAL_CONNECTIONS_FILE = BASE_DIR / "social_connections.json"
-POST_ANALYTICS_FILE = BASE_DIR / "post_analytics.json"
-SCHEDULED_POSTS_FILE = BASE_DIR / "scheduled_posts.json"
+SOCIAL_CONNECTIONS_FILE = DATA_DIR / "social_connections.json"
+POST_ANALYTICS_FILE = DATA_DIR / "post_analytics.json"
+SCHEDULED_POSTS_FILE = DATA_DIR / "scheduled_posts.json"
 _social_lock = threading.Lock()
 _schedule_lock = threading.Lock()
 

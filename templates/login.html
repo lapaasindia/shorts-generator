@@ -110,6 +110,9 @@
       .sbar.strong{background:var(--accent);}
       .slabel{font-size:10px;font-weight:800;color:var(--muted);}
       .field-hint{font-size:10px;color:var(--muted);margin-top:2px;}
+      .match-hint{font-size:11px;font-weight:800;min-height:14px;margin-top:-6px;}
+      .match-hint.ok{color:var(--teal);}
+      .match-hint.bad{color:var(--coral);}
 
       @media(max-width:860px){body{grid-template-columns:1fr;}.hero{display:none;}
         .form-panel{padding:32px 20px;min-height:100vh;}}
@@ -151,7 +154,8 @@
             <label for="display">Display name</label>
             <div class="input-wrap">
               <span class="input-icon">☺</span>
-              <input id="display" name="display" type="text" placeholder="Your name" autocomplete="name" required>
+              <input id="display" name="display" type="text" placeholder="Your name" autocomplete="name"
+                     value="{{ form_display or '' }}" required>
             </div>
           </div>
           <div class="field">
@@ -160,6 +164,7 @@
               <span class="input-icon">@</span>
               <input id="username" name="username" type="text" placeholder="lowercase, no spaces"
                      autocomplete="username" pattern="[a-z0-9_]+" minlength="3" required
+                     value="{{ form_username or '' }}"
                      oninvalid="this.setCustomValidity('Only lowercase letters, numbers, and underscores allowed (e.g. john_doe)')"
                      oninput="this.setCustomValidity('')">
             </div>
@@ -171,14 +176,15 @@
               <div class="input-wrap">
                 <span class="input-icon">⬤</span>
                 <input id="password" name="password" type="password" placeholder="Min. 6 chars"
-                       autocomplete="new-password" minlength="6" oninput="checkPw(this.value)" required>
+                       autocomplete="new-password" minlength="6" oninput="checkPw(this.value); checkMatch()" required>
               </div>
             </div>
             <div class="field">
               <label for="confirm">Confirm</label>
               <div class="input-wrap">
                 <span class="input-icon">⬤</span>
-                <input id="confirm" name="confirm" type="password" placeholder="Repeat" autocomplete="new-password" required>
+                <input id="confirm" name="confirm" type="password" placeholder="Repeat" autocomplete="new-password"
+                       oninput="checkMatch()" required>
               </div>
             </div>
           </div>
@@ -189,7 +195,8 @@
             </div>
             <span class="slabel" id="sLabel"></span>
           </div>
-          <button class="submit-btn" type="submit">
+          <span class="match-hint" id="matchHint"></span>
+          <button class="submit-btn" type="submit" id="registerBtn">
             Create account <span class="btn-arr">→</span>
           </button>
           {% if users_exist %}
@@ -260,7 +267,31 @@
         lbl.textContent = (labels[score-1] || 'Weak') + ' password';
         lbl.style.color = score >= 3 ? 'var(--teal)' : score === 2 ? 'var(--gold)' : 'var(--coral)';
       }
-      document.querySelector('form')?.addEventListener('submit', function() {
+      // Live password-match feedback so mismatches are caught before submit.
+      function checkMatch() {
+        const p = document.getElementById('password');
+        const c = document.getElementById('confirm');
+        const hint = document.getElementById('matchHint');
+        if (!p || !c || !hint) return true;
+        if (!c.value) { hint.textContent = ''; hint.className = 'match-hint'; return true; }
+        if (p.value === c.value) {
+          hint.textContent = '✓ Passwords match';
+          hint.className = 'match-hint ok';
+          return true;
+        }
+        hint.textContent = '✗ Passwords do not match';
+        hint.className = 'match-hint bad';
+        return false;
+      }
+
+      document.querySelector('form')?.addEventListener('submit', function(e) {
+        // Only block on the register form (it has a confirm field).
+        const c = document.getElementById('confirm');
+        if (c && !checkMatch()) {
+          e.preventDefault();
+          document.getElementById('confirm').focus();
+          return;
+        }
         const btn = this.querySelector('.submit-btn');
         if (btn) { btn.disabled = true; btn.innerHTML = 'Please wait…'; }
       });

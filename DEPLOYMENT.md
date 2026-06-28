@@ -22,7 +22,7 @@ LLM_PROVIDER=heuristic
 WEB_AUTH_USERNAME=team
 WEB_AUTH_PASSWORD=make_a_real_password
 SECRET_KEY=make_a_long_random_string
-WEB_OUTPUT_DIR=/data/web_output
+DATA_DIR=/data
 ```
 
 Recommended for production:
@@ -54,7 +54,7 @@ http://your-server:7860
 ```
 
 Generated uploads, transcripts, JSON, and shorts are stored in the
-`shorts_output` Docker volume.
+`shorts_data` Docker volume.
 
 ## Generic Hosted Platform
 
@@ -111,7 +111,7 @@ export LLM_PROVIDER=heuristic
 export WEB_AUTH_USERNAME=team
 export WEB_AUTH_PASSWORD=make_a_real_password
 export SECRET_KEY=make_a_long_random_string
-export WEB_OUTPUT_DIR=/data/web_output
+export DATA_DIR=/data
 gunicorn -c gunicorn.conf.py wsgi:app
 ```
 
