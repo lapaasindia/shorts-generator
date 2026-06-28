@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Team Login</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='quickdark1') }}">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#07080a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Shorts">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
   </head>
   <body>
     <main class="login-shell">
@@ -30,5 +36,14 @@
         </form>
       </section>
     </main>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((reg) => console.log('[Service Worker] Registered successfully from Login with scope:', reg.scope))
+            .catch((err) => console.error('[Service Worker] Registration failed:', err));
+        });
+      }
+    </script>
   </body>
 </html>

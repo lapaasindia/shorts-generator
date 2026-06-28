@@ -119,6 +119,7 @@ function renderResult(job) {
                 <span class="badge">Reel ${escapeHtml(short.reel_index || index + 1)}</span>
                 <span class="badge score">${escapeHtml(short.score ?? "0")}</span>
                 <span class="badge template">${escapeHtml(short.template_name || "Template")}</span>
+                ${short.upscaled ? `<span class="badge quality">${escapeHtml(`${short.output_width}x${short.output_height}`)}</span>` : ""}
                 <span class="badge">${formatTime(short.start_time)} - ${formatTime(short.end_time)}</span>
               </div>
               <h2>${escapeHtml(short.title || "Untitled")}</h2>
@@ -294,3 +295,12 @@ updateSourcePanels();
 updateTemplateSummary();
 setEmpty();
 loadRecentJobs().catch(() => {});
+
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((reg) => console.log('[Service Worker] Registered successfully with scope:', reg.scope))
+      .catch((err) => console.error('[Service Worker] Registration failed:', err));
+  });
+}

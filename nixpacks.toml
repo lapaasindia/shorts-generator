@@ -1,0 +1,14 @@
+# nixpacks.toml for shorts-generator web application
+
+[phases.setup]
+aptPkgs = ["...", "ffmpeg", "libgl1", "libglib2.0-0"]
+
+[phases.install]
+cmds = [
+  "python -m venv /opt/venv",
+  "/opt/venv/bin/pip install --upgrade pip",
+  "/opt/venv/bin/pip install -r requirements-web.txt"
+]
+
+[start]
+cmd = "/opt/venv/bin/gunicorn -c gunicorn.conf.py wsgi:app"

@@ -12,7 +12,12 @@ import subprocess
 from typing import Dict, List, Optional, Tuple
 
 from ..config import LOCAL_OUTPUT_DIR
-from .templates import TEMPLATE_BY_ID, normalize_template_ids, render_template_variant
+from .templates import (
+    TEMPLATE_BY_ID,
+    normalize_template_ids,
+    render_target_size,
+    render_template_variant,
+)
 
 
 def _ratio(aspect_ratio: str) -> float:
@@ -213,10 +218,12 @@ def crop_highlights_local(
     aspect_ratio: str = "9:16",
     out_dir: Optional[str] = None,
     template_ids: Optional[List[str]] = None,
+    upscale: bool = False,
 ) -> List[Dict]:
     out_dir = out_dir or LOCAL_OUTPUT_DIR
     os.makedirs(out_dir, exist_ok=True)
     selected_templates = normalize_template_ids(template_ids)
+    output_width, output_height = render_target_size(aspect_ratio, upscale=upscale)
     results: List[Dict] = []
     for i, h in enumerate(highlights, 1):
         base_path = os.path.join(out_dir, f".reel_{i:02d}_base.mp4")
@@ -272,6 +279,7 @@ def crop_highlights_local(
                         aspect_ratio,
                         str(h.get("hook_sentence") or h.get("title") or ""),
                         captions,
+                        upscale=upscale,
                     )
                     results.append(
                         {
@@ -281,6 +289,9 @@ def crop_highlights_local(
                             "template_name": template["name"],
                             "template_signal": template["signal"],
                             "clip_url": out_path,
+                            "upscaled": upscale,
+                            "output_width": output_width,
+                            "output_height": output_height,
                         }
                     )
                 except Exception as e:

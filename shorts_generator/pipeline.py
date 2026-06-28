@@ -24,6 +24,7 @@ def _run_local(
     template_ids: Optional[List[str]] = None,
     nonlinear_edit: bool = True,
     focus_prompt: Optional[str] = None,
+    upscale: bool = False,
 ) -> Dict:
     from .editorial import prepare_reel
     from .local.clipper import crop_highlights_local
@@ -62,6 +63,7 @@ def _run_local(
         aspect_ratio=aspect_ratio,
         out_dir=output_dir,
         template_ids=template_ids,
+        upscale=upscale,
     )
 
     return {
@@ -125,6 +127,7 @@ def generate_shorts(
     template_ids: Optional[List[str]] = None,
     nonlinear_edit: bool = True,
     focus_prompt: Optional[str] = None,
+    upscale: bool = False,
 ) -> Dict:
     """Run the full pipeline and return a structured result.
 
@@ -142,6 +145,8 @@ def generate_shorts(
         nonlinear_edit: move the strongest source-time hook to the beginning, then
             jump back to context when exact hook timestamps are available.
         focus_prompt: optional topic or moment request used during highlight ranking.
+        upscale: in local mode, export final reels at 2x the template resolution
+            after captions and styling are rendered.
 
     Returns:
         {
@@ -164,6 +169,7 @@ def generate_shorts(
             template_ids=template_ids,
             nonlinear_edit=nonlinear_edit,
             focus_prompt=focus_prompt,
+            upscale=upscale,
         )
     if mode == "api":
         return _run_api(

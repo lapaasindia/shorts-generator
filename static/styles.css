@@ -1049,6 +1049,12 @@ summary:focus-visible {
   background: var(--gold);
 }
 
+.badge.quality {
+  color: var(--black);
+  border-color: var(--teal);
+  background: var(--teal);
+}
+
 .hook,
 .reason,
 .edit-sequence {

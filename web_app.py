@@ -16,6 +16,7 @@ from typing import Dict, Optional
 from flask import (
     Flask,
     jsonify,
+    make_response,
     redirect,
     render_template,
     request,
@@ -300,6 +301,7 @@ def _run_job(
     template_ids: list[str],
     nonlinear_edit: bool,
     focus_prompt: Optional[str],
+    upscale: bool,
 ) -> None:
     job_dir = _job_dir(job_id)
 
@@ -320,6 +322,7 @@ def _run_job(
                 template_ids=template_ids,
                 nonlinear_edit=nonlinear_edit,
                 focus_prompt=focus_prompt,
+                upscale=upscale,
             )
         serialized_result = _serialize_result(job_id, result)
         job_result_path = job_dir / "result.json"
@@ -342,6 +345,21 @@ def _run_job(
             error=str(exc),
             completed_at=_utc_now(),
         )
+
+
+@app.route("/manifest.json")
+def serve_manifest():
+    response = make_response(send_from_directory(app.static_folder, "manifest.json"))
+    response.headers["Content-Type"] = "application/json"
+    return response
+
+
+@app.route("/sw.js")
+def serve_sw():
+    response = make_response(send_from_directory(app.static_folder, "sw.js"))
+    response.headers["Content-Type"] = "application/javascript"
+    response.headers["Service-Worker-Allowed"] = "/"
+    return response
 
 
 @app.get("/healthz")
@@ -416,6 +434,7 @@ def create_job():
     download_format = request.form.get("download_format", "720")
     template_ids = normalize_template_ids(request.form.getlist("template_ids"))
     nonlinear_edit = request.form.get("nonlinear_edit") == "on"
+    upscale = request.form.get("upscale") == "on"
     focus_prompt = (request.form.get("focus_prompt") or "").strip()[:500]
 
     try:
@@ -460,6 +479,7 @@ def create_job():
                 "template_ids": template_ids,
                 "nonlinear_edit": nonlinear_edit,
                 "focus_prompt": focus_prompt,
+                "upscale": upscale,
             },
         }
         _save_job_unlocked(jobs[job_id])
@@ -476,6 +496,7 @@ def create_job():
             template_ids,
             nonlinear_edit,
             focus_prompt,
+            upscale,
         ),
         daemon=True,
     )

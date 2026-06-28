@@ -44,6 +44,7 @@ Built for creators, agencies, and developers who don't want to pay $20–$300/mo
 - **Hook-First Non-Linear Edits**: The strongest source-time line can play first, then jump back to setup and forward to payoff while captions stay synchronized
 - **20 Reel Templates**: Render the same editorial reel across viral, authority, business, creator, cinematic, monochrome, editorial, and story-led styles
 - **Burned-In Hooks + Captions**: Local renders include a top hook, readable lower-third captions, H.264 video, AAC audio, and loudness normalization
+- **4K Upscaled Exports**: Web jobs upscale final reels after rendering so downloads are ready at 2x template resolution, including 2160x3840 for 9:16
 - **🎤 Whisper Transcription, Your Choice**: Cloud (`/openai-whisper` via MuAPI) or local (`faster-whisper`, CPU or CUDA) — same downstream output shape
 - **🧩 Long-Video Aware**: Videos over 30 minutes are auto-chunked with overlap so nothing gets missed
 - **♻️ Smart Dedupe**: Overlapping highlights are collapsed by score so you never get two near-duplicate clips
@@ -125,7 +126,8 @@ Open `http://127.0.0.1:7860`, then paste a YouTube URL or upload a local
 video file. The web app runs the same local pipeline as the CLI and writes each
 job to `./web_output`. Select one or more of the 20 templates; choosing **All
 20** automatically plans one editorial reel rendered in every style. The clip
-count has no fixed UI ceiling.
+count has no fixed UI ceiling. Final web renders default to 4K upscale after
+captions and template styling are applied.
 
 Production/team hosting:
 
@@ -206,6 +208,7 @@ xargs -a urls.txt -I{} python main.py "{}"
 | `--aspect-ratio` | `9:16` | Any ratio; `9:16` for TikTok/Reels, `1:1` for square |
 | `--format` | `720` | Source download resolution: `360` / `480` / `720` / `1080` |
 | `--language` | auto | Force Whisper language code (e.g. `en`) |
+| `--upscale` | off | Local mode only: upscale final rendered reels to 2x template resolution |
 | `--output-json` | — | Dump the full result (transcript + all candidates) to a file |
 
 ### API mode vs Local mode

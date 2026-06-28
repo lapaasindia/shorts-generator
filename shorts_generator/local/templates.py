@@ -298,8 +298,49 @@ def _target_size(aspect_ratio: str) -> tuple[int, int]:
     }.get(aspect_ratio, (1080, 1920))
 
 
+def render_target_size(aspect_ratio: str, upscale: bool = False) -> tuple[int, int]:
+    width, height = _target_size(aspect_ratio)
+    if upscale:
+        return width * 2, height * 2
+    return width, height
+
+
 def _escape_filter_path(path: str) -> str:
     return path.replace("\\", "/").replace(":", r"\:").replace("'", r"\'")
+
+
+def _upscale_video(ffmpeg: str, source_path: str, out_path: str, aspect_ratio: str) -> str:
+    width, height = render_target_size(aspect_ratio, upscale=True)
+    filters = [
+        f"scale={width}:{height}:flags=lanczos",
+        "unsharp=5:5:0.8:3:3:0.4",
+        "fps=30",
+        "setsar=1",
+        "format=yuv420p",
+    ]
+    cmd = [
+        ffmpeg,
+        "-y",
+        "-loglevel",
+        "error",
+        "-i",
+        source_path,
+        "-vf",
+        ",".join(filters),
+        "-c:v",
+        "libx264",
+        "-preset",
+        "medium",
+        "-crf",
+        "18",
+        "-c:a",
+        "copy",
+        "-movflags",
+        "+faststart",
+        out_path,
+    ]
+    subprocess.run(cmd, check=True)
+    return out_path
 
 
 def render_template_variant(
@@ -310,11 +351,13 @@ def render_template_variant(
     aspect_ratio: str,
     hook: str,
     captions: List[Dict],
+    upscale: bool = False,
 ) -> str:
     template = TEMPLATE_BY_ID[template_id]
     width, height = _target_size(aspect_ratio)
     ass_path = f"{out_path}.ass"
     write_ass_overlay(ass_path, template, hook, captions, width, height)
+    render_path = f"{out_path}.render.mp4" if upscale else out_path
 
     accent = template["accent"].replace("#", "0x")
     filters = [
@@ -352,11 +395,15 @@ def render_template_variant(
         "160k",
         "-movflags",
         "+faststart",
-        out_path,
+        render_path,
     ]
     try:
         subprocess.run(cmd, check=True)
+        if upscale:
+            _upscale_video(ffmpeg, render_path, out_path, aspect_ratio)
     finally:
         if os.path.exists(ass_path):
             os.remove(ass_path)
+        if upscale and os.path.exists(render_path):
+            os.remove(render_path)
     return out_path

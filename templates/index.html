@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Shorts Console</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='quickdark1') }}">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#07080a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Shorts">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
   </head>
   <body>
     <div class="app-shell">
@@ -151,6 +157,11 @@
                         <input type="checkbox" name="nonlinear_edit" checked>
                         <span aria-hidden="true"></span>
                         <strong>Hook-first remix</strong>
+                      </label>
+                      <label class="switch-control">
+                        <input type="checkbox" name="upscale" checked>
+                        <span aria-hidden="true"></span>
+                        <strong>4K upscale</strong>
                       </label>
                       <div class="render-estimate">
                         <span>Planned renders</span>
