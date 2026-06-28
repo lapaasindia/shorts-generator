@@ -301,6 +301,112 @@ REEL_TEMPLATES: List[Dict[str, str]] = [
 ]
 
 
+# ── 50-template pack (AI_Shorts_50_Template_Pack.json) ────────────────────────
+# The pack describes layout/composition templates (category, master_layout,
+# layers, animations) but carries no colors or ffmpeg looks. We map each entry
+# onto the render schema below — a distinct palette + grade per category, with
+# a per-template accent so they stay visually varied — while preserving the
+# original layout metadata for the UI and future compositing work.
+
+_PACK_PATH = Path(__file__).resolve().parent / "template_pack.json"
+
+# surface / font / ffmpeg grade + a rotating accent list per category.
+_CATEGORY_STYLES: Dict[str, Dict] = {
+    "talking_head": {
+        "label": "Talking head",
+        "surface": "#14181f",
+        "font": "#ffffff",
+        "filter": "eq=contrast=1.1:saturation=1.18",
+        "accents": ["#ffd33d", "#4fa3ff", "#ff7a59", "#43d6a0", "#b98bff", "#ff5e8a", "#5ad1e0"],
+    },
+    "business": {
+        "label": "Business",
+        "surface": "#0a1410",
+        "font": "#ffffff",
+        "filter": "colorbalance=gs=.04:bs=-.02,eq=contrast=1.08:saturation=1.05",
+        "accents": ["#30c875", "#2f7df4", "#d4af37", "#1abc9c", "#3a7bd5"],
+    },
+    "ai_tech": {
+        "label": "AI / Tech",
+        "surface": "#04000f",
+        "font": "#ffffff",
+        "filter": "colorbalance=bs=.08:rs=.02,eq=contrast=1.2:saturation=1.28",
+        "accents": ["#00ffd5", "#ff00ff", "#7b5bff", "#00b3ff", "#39ff14"],
+    },
+    "podcast": {
+        "label": "Podcast",
+        "surface": "#160a12",
+        "font": "#ffffff",
+        "filter": "colorbalance=rs=.06:gs=-.01:bs=-.02,eq=contrast=1.12:saturation=1.1",
+        "accents": ["#ff6b5e", "#e2bd52", "#ff9f1c", "#c77dff", "#ff5e8a"],
+    },
+    "cinematic": {
+        "label": "Cinematic",
+        "surface": "#060809",
+        "font": "#ffffff",
+        "filter": "colorbalance=rs=.06:bs=.04:gs=-.03,eq=contrast=1.28:saturation=1.08,vignette=PI/4",
+        "accents": ["#55d5c9", "#ff7a3d", "#d9c39a", "#6ec6ff", "#e08e6d"],
+    },
+}
+
+_DEFAULT_STYLE = {
+    "label": "Reel",
+    "surface": "#101216",
+    "font": "#ffffff",
+    "filter": "eq=contrast=1.1:saturation=1.12",
+    "accents": ["#ffd33d", "#4fa3ff", "#43d6a0"],
+}
+
+
+def _pretty_layout(layout: str) -> str:
+    return " ".join(part.capitalize() for part in str(layout).split("_"))
+
+
+def _load_pack_templates() -> List[Dict]:
+    if not _PACK_PATH.exists():
+        return []
+    try:
+        import json
+        data = json.loads(_PACK_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+    per_category_index: Dict[str, int] = {}
+    out: List[Dict] = []
+    for entry in data.get("templates", []):
+        category = entry.get("category", "")
+        style = _CATEGORY_STYLES.get(category, _DEFAULT_STYLE)
+        idx = per_category_index.get(category, 0)
+        per_category_index[category] = idx + 1
+        accents = style["accents"]
+        accent = accents[idx % len(accents)]
+        out.append({
+            "id": str(entry.get("template_id", f"pack{idx}")).lower(),
+            "name": entry.get("name", "Reel template"),
+            "signal": f"{style['label']} · {_pretty_layout(entry.get('master_layout', ''))}",
+            "accent": accent,
+            "surface": style["surface"],
+            "font": style["font"],
+            "filter": style["filter"],
+            # Preserved layout metadata (not used by the ffmpeg grade yet).
+            "category": category,
+            "master_layout": entry.get("master_layout", ""),
+            "aspect_ratios": entry.get("aspect_ratios", {}),
+            "layers": entry.get("layers", []),
+            "animations": entry.get("animations", []),
+            "editable": entry.get("editable", []),
+        })
+    return out
+
+
+# Append the pack to the built-in templates (skip id collisions).
+_existing_ids = {t["id"] for t in REEL_TEMPLATES}
+for _packed in _load_pack_templates():
+    if _packed["id"] not in _existing_ids:
+        REEL_TEMPLATES.append(_packed)
+        _existing_ids.add(_packed["id"])
+
+
 TEMPLATE_BY_ID = {template["id"]: template for template in REEL_TEMPLATES}
 
 

@@ -1,0 +1,2257 @@
+{
+  "version": "1.0",
+  "description": "50 master reel templates with vertical, square and wide variants",
+  "total_templates": 50,
+  "templates": [
+    {
+      "template_id": "T001",
+      "category": "talking_head",
+      "name": "Talking Head Template 1",
+      "master_layout": "center_host_top_headline",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T002",
+      "category": "talking_head",
+      "name": "Talking Head Template 2",
+      "master_layout": "left_host_right_broll",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "left"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T003",
+      "category": "talking_head",
+      "name": "Talking Head Template 3",
+      "master_layout": "right_host_left_broll",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "right"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T004",
+      "category": "talking_head",
+      "name": "Talking Head Template 4",
+      "master_layout": "top_video_bottom_host",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T005",
+      "category": "talking_head",
+      "name": "Talking Head Template 5",
+      "master_layout": "floating_facecam",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "left"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T006",
+      "category": "talking_head",
+      "name": "Talking Head Template 6",
+      "master_layout": "pip_news",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "right"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T007",
+      "category": "talking_head",
+      "name": "Talking Head Template 7",
+      "master_layout": "greenscreen",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T008",
+      "category": "talking_head",
+      "name": "Talking Head Template 8",
+      "master_layout": "screen_plus_facecam",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "left"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T009",
+      "category": "talking_head",
+      "name": "Talking Head Template 9",
+      "master_layout": "documentary",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "right"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T010",
+      "category": "talking_head",
+      "name": "Talking Head Template 10",
+      "master_layout": "comparison",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T011",
+      "category": "talking_head",
+      "name": "Talking Head Template 11",
+      "master_layout": "center_host_top_headline",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "left"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T012",
+      "category": "talking_head",
+      "name": "Talking Head Template 12",
+      "master_layout": "left_host_right_broll",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "right"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T013",
+      "category": "talking_head",
+      "name": "Talking Head Template 13",
+      "master_layout": "right_host_left_broll",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T014",
+      "category": "talking_head",
+      "name": "Talking Head Template 14",
+      "master_layout": "top_video_bottom_host",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "left"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T015",
+      "category": "talking_head",
+      "name": "Talking Head Template 15",
+      "master_layout": "floating_facecam",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "right"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T016",
+      "category": "business",
+      "name": "Business Template 1",
+      "master_layout": "center_host_top_headline",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T017",
+      "category": "business",
+      "name": "Business Template 2",
+      "master_layout": "left_host_right_broll",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "left"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T018",
+      "category": "business",
+      "name": "Business Template 3",
+      "master_layout": "right_host_left_broll",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "right"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T019",
+      "category": "business",
+      "name": "Business Template 4",
+      "master_layout": "top_video_bottom_host",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T020",
+      "category": "business",
+      "name": "Business Template 5",
+      "master_layout": "floating_facecam",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "left"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T021",
+      "category": "business",
+      "name": "Business Template 6",
+      "master_layout": "pip_news",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "right"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T022",
+      "category": "business",
+      "name": "Business Template 7",
+      "master_layout": "greenscreen",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T023",
+      "category": "business",
+      "name": "Business Template 8",
+      "master_layout": "screen_plus_facecam",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "left"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T024",
+      "category": "business",
+      "name": "Business Template 9",
+      "master_layout": "documentary",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "right"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T025",
+      "category": "business",
+      "name": "Business Template 10",
+      "master_layout": "comparison",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T026",
+      "category": "ai_tech",
+      "name": "Ai Tech Template 1",
+      "master_layout": "center_host_top_headline",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T027",
+      "category": "ai_tech",
+      "name": "Ai Tech Template 2",
+      "master_layout": "left_host_right_broll",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "left"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T028",
+      "category": "ai_tech",
+      "name": "Ai Tech Template 3",
+      "master_layout": "right_host_left_broll",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "right"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T029",
+      "category": "ai_tech",
+      "name": "Ai Tech Template 4",
+      "master_layout": "top_video_bottom_host",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T030",
+      "category": "ai_tech",
+      "name": "Ai Tech Template 5",
+      "master_layout": "floating_facecam",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "left"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T031",
+      "category": "ai_tech",
+      "name": "Ai Tech Template 6",
+      "master_layout": "pip_news",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "right"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T032",
+      "category": "ai_tech",
+      "name": "Ai Tech Template 7",
+      "master_layout": "greenscreen",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T033",
+      "category": "ai_tech",
+      "name": "Ai Tech Template 8",
+      "master_layout": "screen_plus_facecam",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "left"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T034",
+      "category": "podcast",
+      "name": "Podcast Template 1",
+      "master_layout": "center_host_top_headline",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T035",
+      "category": "podcast",
+      "name": "Podcast Template 2",
+      "master_layout": "left_host_right_broll",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "left"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T036",
+      "category": "podcast",
+      "name": "Podcast Template 3",
+      "master_layout": "right_host_left_broll",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "right"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T037",
+      "category": "podcast",
+      "name": "Podcast Template 4",
+      "master_layout": "top_video_bottom_host",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T038",
+      "category": "podcast",
+      "name": "Podcast Template 5",
+      "master_layout": "floating_facecam",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "left"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T039",
+      "category": "podcast",
+      "name": "Podcast Template 6",
+      "master_layout": "pip_news",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "right"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T040",
+      "category": "podcast",
+      "name": "Podcast Template 7",
+      "master_layout": "greenscreen",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T041",
+      "category": "cinematic",
+      "name": "Cinematic Template 1",
+      "master_layout": "center_host_top_headline",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T042",
+      "category": "cinematic",
+      "name": "Cinematic Template 2",
+      "master_layout": "left_host_right_broll",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "left"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T043",
+      "category": "cinematic",
+      "name": "Cinematic Template 3",
+      "master_layout": "right_host_left_broll",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "right"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T044",
+      "category": "cinematic",
+      "name": "Cinematic Template 4",
+      "master_layout": "top_video_bottom_host",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T045",
+      "category": "cinematic",
+      "name": "Cinematic Template 5",
+      "master_layout": "floating_facecam",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "left"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T046",
+      "category": "cinematic",
+      "name": "Cinematic Template 6",
+      "master_layout": "pip_news",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "right"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T047",
+      "category": "cinematic",
+      "name": "Cinematic Template 7",
+      "master_layout": "greenscreen",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T048",
+      "category": "cinematic",
+      "name": "Cinematic Template 8",
+      "master_layout": "screen_plus_facecam",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "left"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T049",
+      "category": "cinematic",
+      "name": "Cinematic Template 9",
+      "master_layout": "documentary",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "right"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    },
+    {
+      "template_id": "T050",
+      "category": "cinematic",
+      "name": "Cinematic Template 10",
+      "master_layout": "comparison",
+      "aspect_ratios": {
+        "vertical": "1080x1920",
+        "square": "1080x1080",
+        "wide": "1920x1080"
+      },
+      "layers": [
+        {
+          "id": "background",
+          "type": "video",
+          "position": "full"
+        },
+        {
+          "id": "host",
+          "type": "person",
+          "position": "center"
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "position": "top"
+        },
+        {
+          "id": "captions",
+          "type": "subtitles",
+          "position": "bottom"
+        }
+      ],
+      "animations": [
+        "zoom",
+        "slide",
+        "fade"
+      ],
+      "editable": [
+        "text",
+        "media",
+        "colors",
+        "captions",
+        "transitions"
+      ]
+    }
+  ]
+}

@@ -96,7 +96,7 @@
                     <button type="button" class="tool-item" data-tool="captions"><span>CC</span><strong>AI captions</strong></button>
                     <button type="button" class="tool-item" data-tool="editor"><span>✂</span><strong>Smart editor</strong></button>
                     <button type="button" class="tool-item" data-tool="hook"><span>AI</span><strong>Hook finder</strong></button>
-                    <button type="button" class="tool-item" data-tool="templates"><span>32</span><strong>Templates</strong></button>
+                    <button type="button" class="tool-item" data-tool="templates"><span>{{ reel_templates|length }}</span><strong>Templates</strong></button>
                   </div>
                   <details class="setup-panel" open>
                     <summary>
@@ -167,11 +167,11 @@
                         <div class="template-heading">
                           <div>
                             <span class="field-label" id="templateTitle">Reel templates</span>
-                            <strong>32 styles</strong>
+                            <strong>{{ reel_templates|length }} styles</strong>
                           </div>
                           <div class="template-actions">
                             <button class="text-button compact" type="button" id="recommendedTemplates">Recommended</button>
-                            <button class="text-button compact" type="button" id="selectAllTemplates">All 32</button>
+                            <button class="text-button compact" type="button" id="selectAllTemplates">All {{ reel_templates|length }}</button>
                           </div>
                         </div>
                         <div class="template-grid">
