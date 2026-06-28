@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Shorts Console</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='v4') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='v5') }}">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#07080a">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -195,6 +195,17 @@
               <div><span class="metric-label">Candidates</span><strong id="candidateCount">0</strong></div>
               <div><span class="metric-label">Reels</span><strong id="reelCount">0</strong></div>
               <div><span class="metric-label">Rendered</span><strong id="shortCount">0</strong></div>
+            </section>
+
+            <section class="project-progress hidden" id="projectProgress" aria-label="Project creation progress">
+              <div class="progress-copy">
+                <span id="progressTitle">Preparing project</span>
+                <strong id="progressPercent">0%</strong>
+              </div>
+              <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <span id="progressFill"></span>
+              </div>
+              <p id="progressDetail">Waiting.</p>
             </section>
 
             <section class="recent-panel" id="projects" aria-label="Recent projects">
@@ -483,6 +494,6 @@
       </div>
     </div>
 
-    <script src="{{ url_for('static', filename='app.js', v='v4') }}"></script>
+    <script src="{{ url_for('static', filename='app.js', v='v5') }}"></script>
   </body>
 </html>

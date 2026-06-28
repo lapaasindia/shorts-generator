@@ -8,6 +8,11 @@ const reelCountEl = document.querySelector("#reelCount");
 const shortCountEl = document.querySelector("#shortCount");
 const logOutput = document.querySelector("#logOutput");
 const results = document.querySelector("#results");
+const projectProgress = document.querySelector("#projectProgress");
+const progressTitle = document.querySelector("#progressTitle");
+const progressPercent = document.querySelector("#progressPercent");
+const progressFill = document.querySelector("#progressFill");
+const progressDetail = document.querySelector("#progressDetail");
 const sourceRadios = document.querySelectorAll("input[name='source_type']");
 const refreshJobsButton = document.querySelector("#refreshJobs");
 const recentJobs = document.querySelector("#recentJobs");
@@ -20,6 +25,8 @@ const recommendedTemplates = document.querySelector("#recommendedTemplates");
 const selectAllTemplates = document.querySelector("#selectAllTemplates");
 
 let pollTimer = null;
+let progressTimer = null;
+let projectProgressValue = 0;
 
 // ─── Section navigation ───────────────────────────────────────────────────────
 const SECTIONS = ["create", "calendar", "social", "insights", "compare"];
@@ -117,6 +124,66 @@ function setStatus(status, customLabel) {
   const label = customLabel || (status ? status.charAt(0).toUpperCase() + status.slice(1) : "Idle");
   statusPill.textContent = label;
   statusPill.className = "status-pill " + (status || "");
+}
+
+function stopProgressTimer() {
+  if (progressTimer) {
+    clearInterval(progressTimer);
+    progressTimer = null;
+  }
+}
+
+function setProjectProgress(percent, title, detail, state) {
+  if (!projectProgress || !progressFill || !progressTitle || !progressPercent || !progressDetail) return;
+  const value = Math.max(0, Math.min(100, Math.round(percent)));
+  projectProgressValue = value;
+  projectProgress.classList.remove("hidden", "queued", "uploading", "running", "complete", "failed");
+  if (state) projectProgress.classList.add(state);
+  progressTitle.textContent = title || "Creating project";
+  progressPercent.textContent = value + "%";
+  progressFill.style.width = value + "%";
+  const track = projectProgress.querySelector(".progress-track");
+  if (track) track.setAttribute("aria-valuenow", String(value));
+  progressDetail.textContent = detail || "";
+}
+
+function startProcessingProgress() {
+  if (progressTimer) return;
+  if (projectProgressValue < 48) {
+    setProjectProgress(48, "Creating project", "Preparing transcript, hooks, and templates.", "running");
+  }
+  progressTimer = setInterval(function() {
+    if (projectProgressValue >= 92) return;
+    const step = projectProgressValue < 70 ? 3 : projectProgressValue < 84 ? 2 : 1;
+    setProjectProgress(
+      Math.min(92, projectProgressValue + step),
+      "Creating project",
+      "Analyzing the video and rendering clips.",
+      "running"
+    );
+  }, 1200);
+}
+
+function updateProgressFromJob(job) {
+  if (!job) return;
+  if (job.status === "complete") {
+    stopProgressTimer();
+    setProjectProgress(100, "Project ready", "Generated clips are ready to review.", "complete");
+    return;
+  }
+  if (job.status === "failed") {
+    stopProgressTimer();
+    setProjectProgress(100, "Project failed", job.error || "Could not create project.", "failed");
+    return;
+  }
+  if (job.status === "running") {
+    startProcessingProgress();
+    return;
+  }
+  if (job.status === "queued") {
+    stopProgressTimer();
+    setProjectProgress(Math.max(projectProgressValue, 40), "Project queued", "Waiting for processing to start.", "queued");
+  }
 }
 
 function getSelectedSourceType() {
@@ -249,6 +316,7 @@ function renderResult(job) {
 
 function renderJobShell(job) {
   setStatus(job.status);
+  updateProgressFromJob(job);
   jobIdEl.textContent = job.id || "None";
   logOutput.textContent = (job.logs || []).join("\n") || "Waiting.";
   if (job.result) { renderResult(job); }
@@ -294,6 +362,7 @@ async function pollJob(statusUrl) {
   const job = await r.json();
   if (!r.ok) throw new Error(job.error || "Job not found");
   setStatus(job.status);
+  updateProgressFromJob(job);
   jobIdEl.textContent = job.id || "None";
   logOutput.textContent = (job.logs || []).join("\n") || "Waiting.";
   if (job.status === "complete" || job.status === "failed") {
@@ -347,12 +416,14 @@ if (form) {
   form.addEventListener("submit", async function(e) {
     e.preventDefault();
     clearInterval(pollTimer); pollTimer = null;
+    stopProgressTimer();
     runButton.disabled = true;
     const isUpload = getSelectedSourceType() === "upload";
     const uploadFile = selectedUploadFile();
     if (isUpload && !uploadFile) {
       runButton.disabled = false;
       setStatus("failed");
+      setProjectProgress(100, "Upload blocked", "Choose a video file.", "failed");
       logOutput.textContent = "Choose a video file.";
       setEmpty("Failed");
       return;
@@ -361,11 +432,13 @@ if (form) {
     if (isUpload && maxUploadMb && uploadFile.size > maxUploadMb * 1024 * 1024) {
       runButton.disabled = false;
       setStatus("failed");
+      setProjectProgress(100, "Upload blocked", "File is too large. Maximum upload size is " + maxUploadMb + " MB.", "failed");
       logOutput.textContent = "File is too large. Maximum upload size is " + maxUploadMb + " MB.";
       setEmpty("Failed");
       return;
     }
     setStatus(isUpload ? "uploading" : "queued", isUpload ? "Uploading" : "Queued");
+    setProjectProgress(isUpload ? 3 : 12, isUpload ? "Uploading file" : "Queueing project", isUpload ? "Sending video to the server." : "Sending project settings.", isUpload ? "uploading" : "queued");
     jobIdEl.textContent = isUpload ? "Uploading" : "Queued";
     candidateCountEl.textContent = "0";
     reelCountEl.textContent = "0";
@@ -377,26 +450,33 @@ if (form) {
       const data = new FormData(form);
       const p = await submitJobForm(data, function(percent) {
         if (!isUpload) return;
+        const overall = Math.max(3, Math.min(38, Math.round(percent * 0.38)));
         setStatus("uploading", "Upload " + percent + "%");
+        setProjectProgress(overall, "Uploading file", "Upload " + percent + "% complete.", "uploading");
         jobIdEl.textContent = "Upload " + percent + "%";
         logOutput.textContent = "Uploading file to server... " + percent + "%";
       });
       setStatus("queued");
+      setProjectProgress(isUpload ? 42 : 25, "Project queued", "Upload complete. Waiting for processing to start.", "queued");
       logOutput.textContent = "Upload complete. Job queued.";
       jobIdEl.textContent = p.job_id;
       await pollJob(p.status_url);
       pollTimer = setInterval(function() {
         pollJob(p.status_url).catch(function(e) {
           clearInterval(pollTimer); pollTimer = null;
+          stopProgressTimer();
           runButton.disabled = false;
           setStatus("failed");
+          setProjectProgress(100, "Project failed", e.message, "failed");
           logOutput.textContent = e.message;
           setEmpty("Failed");
         });
       }, 1600);
     } catch(e) {
       runButton.disabled = false;
+      stopProgressTimer();
       setStatus("failed");
+      setProjectProgress(100, "Could not start project", e.message, "failed");
       logOutput.textContent = e.message;
       setEmpty("Failed");
     }

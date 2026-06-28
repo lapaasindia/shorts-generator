@@ -824,7 +824,7 @@ summary:focus-visible {
 .job-strip {
   display: grid;
   grid-template-columns: 1.2fr repeat(3, 0.7fr);
-  margin-bottom: 56px;
+  margin-bottom: 14px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--panel-soft);
@@ -856,6 +856,71 @@ summary:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 13px;
+}
+
+.project-progress {
+  margin-bottom: 56px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-soft);
+}
+
+.progress-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.progress-copy span,
+#progressDetail {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.progress-copy strong {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.progress-track {
+  height: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg);
+}
+
+.progress-track span {
+  width: 0;
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--teal));
+  transition: width 0.35s ease;
+}
+
+#progressDetail {
+  margin: 9px 0 0;
+  color: var(--muted-strong);
+  text-transform: none;
+}
+
+.project-progress.failed .progress-copy strong {
+  color: var(--coral);
+}
+
+.project-progress.failed .progress-track span {
+  background: var(--coral);
+}
+
+.project-progress.complete .progress-track span {
+  background: var(--accent);
 }
 
 .recent-panel {
@@ -1333,6 +1398,10 @@ pre {
 
   .job-strip {
     grid-template-columns: 1fr 1fr;
+    margin-bottom: 14px;
+  }
+
+  .project-progress {
     margin-bottom: 42px;
   }
 
