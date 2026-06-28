@@ -522,7 +522,7 @@ def app_status():
         "llm_provider": generator_config.LLM_PROVIDER,
         "web_pipeline_mode": generator_config.WEB_PIPELINE_MODE,
         "youtube_download_ready": youtube_status["ready"],
-        "youtube_download_setup_url": url_for("status_page") + "#youtubeSetup",
+        "youtube_download_setup_url": url_for("status_page", _anchor="setup-youtube-downloads"),
         "web_output_dir": str(WEB_OUTPUT_DIR),
         "template_count": len(list_templates()),
         "user": _current_user(),
@@ -571,11 +571,11 @@ def save_youtube_cookies():
 
     cookies_text = (request.form.get("cookies_text") or "").strip()
     if not cookies_text:
-        return redirect(url_for("status_page", youtube_error="Paste YouTube cookies before saving."))
+        return redirect(url_for("status_page", youtube_error="Paste YouTube cookies before saving.", _anchor="setup-youtube-downloads"))
 
     normalized = cookies_text.replace("\\n", "\n")
     if "youtube.com" not in normalized and ".youtube.com" not in normalized:
-        return redirect(url_for("status_page", youtube_error="Those cookies do not look like YouTube cookies."))
+        return redirect(url_for("status_page", youtube_error="Those cookies do not look like YouTube cookies.", _anchor="setup-youtube-downloads"))
 
     YOUTUBE_COOKIE_FILE.parent.mkdir(parents=True, exist_ok=True)
     YOUTUBE_COOKIE_FILE.write_text(normalized, encoding="utf-8")
@@ -583,7 +583,7 @@ def save_youtube_cookies():
         YOUTUBE_COOKIE_FILE.chmod(0o600)
     except OSError:
         pass
-    return redirect(url_for("status_page", youtube="YouTube cookies saved. Try the link again."))
+    return redirect(url_for("status_page", youtube="YouTube cookies saved. Try the link again.", _anchor="setup-youtube-downloads"))
 
 
 @app.get("/api/me")

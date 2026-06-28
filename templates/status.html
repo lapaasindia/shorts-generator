@@ -42,8 +42,8 @@
         letter-spacing:.05em;padding:4px 9px;border-radius:5px;text-decoration:none;}
       .tag.ok{background:var(--accent);color:var(--black);}
       .tag.warn{background:rgba(226,189,82,.16);color:var(--gold);border:1px solid rgba(226,189,82,.3);}
-      .tag.warn[href]{cursor:pointer;}
-      .tag.warn[href]:hover{background:rgba(226,189,82,.25);}
+      button.tag{font:inherit;cursor:pointer;}
+      .tag.warn:hover{background:rgba(226,189,82,.25);}
       .meta{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
       .meta-item{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;}
       .meta-item span{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:800;}
@@ -52,6 +52,13 @@
         padding:14px 16px;font-size:12px;color:var(--coral);}
       .warnbox strong{display:block;margin-bottom:6px;}
       .warnbox ul{margin:0;padding-left:18px;}
+      .inline-setup{padding:0 18px 18px 58px;border-bottom:1px solid var(--line);}
+      .inline-setup-inner{background:var(--panel-strong);border:1px solid var(--line);border-radius:10px;padding:16px;}
+      .inline-setup h2{font-size:14px;margin-bottom:6px;}
+      .inline-setup p{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:12px;}
+      .inline-setup textarea{width:100%;min-height:112px;resize:vertical;border:1px solid var(--line);
+        border-radius:8px;background:var(--bg);color:var(--text);padding:12px;font:12px ui-monospace,Menlo,monospace;}
+      .inline-setup textarea:focus{outline:2px solid var(--accent);border-color:var(--accent);}
       .setup-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px;}
       .setup-card h2{font-size:15px;margin-bottom:5px;}
       .setup-card p{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:13px;}
@@ -82,7 +89,7 @@
 
       <div class="card">
         {% for name, ok, detail in checks %}
-        {% set setup_href = '#youtubeSetup' if name == 'YouTube downloads' else '#aiSetup' if name == 'AI highlights' else '#publishSetup' if 'publishing' in name else '' %}
+        {% set setup_id = 'setup-' ~ name|lower|replace(' ', '-') %}
         <div class="row">
           <div class="ic {{ 'ok' if ok else 'warn' }}">{{ '✓' if ok else '!' }}</div>
           <div class="row-main">
@@ -91,57 +98,48 @@
           </div>
           {% if ok %}
           <span class="tag ok">OK</span>
-          {% elif setup_href %}
-          <a class="tag warn" href="{{ setup_href }}">Setup</a>
+          {% elif name == 'YouTube downloads' or name == 'AI highlights' or 'publishing' in name %}
+          <button class="tag warn" type="button" data-setup-trigger="{{ setup_id }}" aria-controls="{{ setup_id }}" aria-expanded="false">Setup</button>
           {% else %}
           <span class="tag warn">Setup</span>
           {% endif %}
         </div>
-        {% endfor %}
-      </div>
-
-      <div class="setup-card" id="youtubeSetup">
-        <h2>YouTube download access</h2>
-        {% if youtube_message %}<div class="msg ok">{{ youtube_message }}</div>{% endif %}
-        {% if youtube_error %}<div class="msg err">{{ youtube_error }}</div>{% endif %}
-        <p>
-          Status: {{ "Ready" if youtube_status.ready else "Needs setup" }}
-          {% if youtube_status.updated_at %} · Updated {{ youtube_status.updated_at }}{% endif %}
-        </p>
-        <p>
-          Sign in to YouTube in your browser, export cookies as a Netscape
-          cookies.txt file, paste the full text below, then save. The first line
-          should be <strong># Netscape HTTP Cookie File</strong>.
-        </p>
-        {% if is_admin %}
-        <form method="post" action="{{ url_for('save_youtube_cookies') }}">
-          <textarea name="cookies_text" placeholder="# Netscape HTTP Cookie File&#10;.youtube.com&#9;TRUE&#9;/&#9;TRUE&#9;..."></textarea>
-          <div class="setup-actions">
-            <span class="setup-note">Saved on server as {{ youtube_status.file_path }}</span>
-            <button class="save-btn" type="submit">Save cookies</button>
+        {% if not ok and name == 'YouTube downloads' %}
+        <div class="inline-setup hidden" id="{{ setup_id }}" data-setup-panel>
+          <div class="inline-setup-inner">
+            <h2>YouTube download setup</h2>
+            {% if youtube_message %}<div class="msg ok">{{ youtube_message }}</div>{% endif %}
+            {% if youtube_error %}<div class="msg err">{{ youtube_error }}</div>{% endif %}
+            <p>Paste Netscape-format YouTube cookies here, then save. This enables YouTube links for the whole workspace on this server.</p>
+            {% if is_admin %}
+            <form method="post" action="{{ url_for('save_youtube_cookies') }}">
+              <textarea name="cookies_text" placeholder="# Netscape HTTP Cookie File&#10;.youtube.com&#9;TRUE&#9;/&#9;TRUE&#9;..."></textarea>
+              <div class="setup-actions">
+                <span class="setup-note">Saved on server as {{ youtube_status.file_path }}</span>
+                <button class="save-btn" type="submit">Save cookies</button>
+              </div>
+            </form>
+            {% else %}
+            <p>Ask a workspace admin to update YouTube cookies.</p>
+            {% endif %}
           </div>
-        </form>
-        {% else %}
-        <p>Ask a workspace admin to update YouTube cookies.</p>
+        </div>
+        {% elif not ok and name == 'AI highlights' %}
+        <div class="inline-setup hidden" id="{{ setup_id }}" data-setup-panel>
+          <div class="inline-setup-inner">
+            <h2>AI highlights setup</h2>
+            <p>For AI-ranked clips, set OPENAI_API_KEY with LLM_PROVIDER=openai, or set GEMINI_API_KEY with LLM_PROVIDER=gemini in your hosting environment.</p>
+          </div>
+        </div>
+        {% elif not ok and 'publishing' in name %}
+        <div class="inline-setup hidden" id="{{ setup_id }}" data-setup-panel>
+          <div class="inline-setup-inner">
+            <h2>{{ name }} setup</h2>
+            <p>Publishing needs platform OAuth credentials configured on the server. After credentials are added, open the Social page to connect the account.</p>
+          </div>
+        </div>
         {% endif %}
-      </div>
-
-      <div class="setup-card" id="aiSetup">
-        <h2>AI highlights</h2>
-        <p>
-          The app is currently using heuristic highlights. For AI-ranked clips,
-          set OPENAI_API_KEY with LLM_PROVIDER=openai, or set GEMINI_API_KEY
-          with LLM_PROVIDER=gemini in your hosting environment.
-        </p>
-      </div>
-
-      <div class="setup-card" id="publishSetup">
-        <h2>Publishing connections</h2>
-        <p>
-          Publishing setup needs platform OAuth credentials on the server.
-          Open the Social page after credentials are configured to connect
-          YouTube, Instagram, or Facebook accounts.
-        </p>
+        {% endfor %}
       </div>
 
       <div class="meta">
@@ -156,5 +154,30 @@
       </div>
       {% endif %}
     </div>
+    <script>
+      function openSetupPanel(id) {
+        var panel = document.getElementById(id);
+        if (!panel) return;
+        document.querySelectorAll('[data-setup-panel]').forEach(function(item) {
+          if (item.id !== id) item.classList.add('hidden');
+        });
+        document.querySelectorAll('[data-setup-trigger]').forEach(function(button) {
+          button.setAttribute('aria-expanded', button.getAttribute('data-setup-trigger') === id ? 'true' : 'false');
+        });
+        panel.classList.remove('hidden');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      document.querySelectorAll('[data-setup-trigger]').forEach(function(button) {
+        button.addEventListener('click', function() {
+          openSetupPanel(button.getAttribute('data-setup-trigger'));
+        });
+      });
+
+      if (window.location.hash) {
+        var id = window.location.hash.slice(1);
+        if (id) setTimeout(function() { openSetupPanel(id); }, 80);
+      }
+    </script>
   </body>
 </html>

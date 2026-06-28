@@ -235,7 +235,7 @@ function showYoutubeSetupRequired(message) {
   runButton.disabled = false;
   stopProgressTimer();
   setStatus("setup", "Setup");
-  setSourceAlert(detail, "Open Status setup", "/status#youtubeSetup");
+  setSourceAlert(detail, "Open Status setup", "/status#setup-youtube-downloads");
   setProjectProgress(100, "YouTube setup needed", detail, "setup");
   logOutput.textContent = detail;
   setEmpty("Setup required");
