@@ -53,7 +53,22 @@ document.querySelectorAll(".nav-link[data-section]").forEach(link => {
     const hash = link.getAttribute("href") || "";
     const sectionHashes = ["#calendar","#social","#insights","#compare"];
     if (!sectionHashes.includes(hash)) {
+      // In-page anchors on the Home/create view (Templates, Projects, Renders,
+      // Run Log): show the create section, then smooth-scroll to the target.
+      e.preventDefault();
       showSection("create");
+      const targetId = hash.replace("#", "");
+      const target = targetId ? document.getElementById(targetId) : null;
+      if (target) {
+        // Wait for the create section to become visible and reflow before
+        // scrolling, otherwise the target's position isn't settled yet.
+        setTimeout(() => target.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      // Reflect the active nav state.
+      document.querySelectorAll(".nav-link").forEach(l => l.classList.remove("active"));
+      link.classList.add("active");
       return;
     }
     e.preventDefault();
