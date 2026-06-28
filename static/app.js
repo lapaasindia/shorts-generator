@@ -113,10 +113,47 @@ document.querySelectorAll(".nav-link[data-section]").forEach(link => {
 })();
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
-function setStatus(status) {
-  const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : "Idle";
+function setStatus(status, customLabel) {
+  const label = customLabel || (status ? status.charAt(0).toUpperCase() + status.slice(1) : "Idle");
   statusPill.textContent = label;
   statusPill.className = "status-pill " + (status || "");
+}
+
+function getSelectedSourceType() {
+  const checked = document.querySelector("input[name='source_type']:checked");
+  return checked ? checked.value : "url";
+}
+
+function selectedUploadFile() {
+  const input = document.querySelector("#videoFile");
+  return input && input.files && input.files.length ? input.files[0] : null;
+}
+
+function submitJobForm(data, onUploadProgress) {
+  return new Promise(function(resolve, reject) {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/jobs");
+    xhr.responseType = "text";
+    xhr.upload.onprogress = function(event) {
+      if (event.lengthComputable && typeof onUploadProgress === "function") {
+        onUploadProgress(Math.round((event.loaded / event.total) * 100));
+      }
+    };
+    xhr.onload = function() {
+      let payload = {};
+      try { payload = xhr.responseText ? JSON.parse(xhr.responseText) : {}; }
+      catch (e) { payload = {}; }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(payload);
+      else reject(new Error(payload.error || "Could not start job"));
+    };
+    xhr.onerror = function() {
+      reject(new Error("Upload failed. Check the connection and try again."));
+    };
+    xhr.ontimeout = function() {
+      reject(new Error("Upload timed out. Try a smaller file or a faster connection."));
+    };
+    xhr.send(data);
+  });
 }
 
 function setEmpty(text) {
@@ -311,19 +348,41 @@ if (form) {
     e.preventDefault();
     clearInterval(pollTimer); pollTimer = null;
     runButton.disabled = true;
-    setStatus("queued");
-    jobIdEl.textContent = "Queued";
+    const isUpload = getSelectedSourceType() === "upload";
+    const uploadFile = selectedUploadFile();
+    if (isUpload && !uploadFile) {
+      runButton.disabled = false;
+      setStatus("failed");
+      logOutput.textContent = "Choose a video file.";
+      setEmpty("Failed");
+      return;
+    }
+    const maxUploadMb = Number(form.dataset.maxUploadMb || "0");
+    if (isUpload && maxUploadMb && uploadFile.size > maxUploadMb * 1024 * 1024) {
+      runButton.disabled = false;
+      setStatus("failed");
+      logOutput.textContent = "File is too large. Maximum upload size is " + maxUploadMb + " MB.";
+      setEmpty("Failed");
+      return;
+    }
+    setStatus(isUpload ? "uploading" : "queued", isUpload ? "Uploading" : "Queued");
+    jobIdEl.textContent = isUpload ? "Uploading" : "Queued";
     candidateCountEl.textContent = "0";
     reelCountEl.textContent = "0";
     shortCountEl.textContent = "0";
-    logOutput.textContent = "Queued.";
+    logOutput.textContent = isUpload ? "Uploading file to server..." : "Queued.";
     setEmpty("Running");
     try {
       if (!templateInputs.some(function(i) { return i.checked; })) chooseTemplates(["fanpage-gold"]);
       const data = new FormData(form);
-      const r = await fetch("/jobs", { method: "POST", body: data });
-      const p = await r.json();
-      if (!r.ok) throw new Error(p.error || "Could not start job");
+      const p = await submitJobForm(data, function(percent) {
+        if (!isUpload) return;
+        setStatus("uploading", "Upload " + percent + "%");
+        jobIdEl.textContent = "Upload " + percent + "%";
+        logOutput.textContent = "Uploading file to server... " + percent + "%";
+      });
+      setStatus("queued");
+      logOutput.textContent = "Upload complete. Job queued.";
       jobIdEl.textContent = p.job_id;
       await pollJob(p.status_url);
       pollTimer = setInterval(function() {

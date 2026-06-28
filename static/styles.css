@@ -257,7 +257,8 @@ a {
 }
 
 .status-pill.queued,
-.status-pill.running {
+.status-pill.running,
+.status-pill.uploading {
   color: var(--black);
   border-color: var(--gold);
   background: var(--gold);

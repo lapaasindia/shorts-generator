@@ -11,6 +11,7 @@
         --accent:#d6ff45;--coral:#ff6b5e;--gold:#e2bd52;--teal:#55d5c9;
       }
       *{box-sizing:border-box;margin:0;padding:0;}
+      html{scroll-behavior:smooth;}
       body{min-height:100vh;background:var(--bg);color:var(--text);
         font-family:"Avenir Next","Gill Sans","Trebuchet MS",sans-serif;
         display:flex;justify-content:center;padding:48px 20px;}
@@ -37,10 +38,12 @@
       .row-main{flex:1;}
       .row-main strong{display:block;font-size:14px;}
       .row-main span{font-size:12px;color:var(--muted);}
-      .tag{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;
-        padding:4px 9px;border-radius:5px;}
+      .tag{display:inline-grid;place-items:center;font-size:10px;font-weight:900;text-transform:uppercase;
+        letter-spacing:.05em;padding:4px 9px;border-radius:5px;text-decoration:none;}
       .tag.ok{background:var(--accent);color:var(--black);}
       .tag.warn{background:rgba(226,189,82,.16);color:var(--gold);border:1px solid rgba(226,189,82,.3);}
+      .tag.warn[href]{cursor:pointer;}
+      .tag.warn[href]:hover{background:rgba(226,189,82,.25);}
       .meta{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
       .meta-item{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;}
       .meta-item span{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:800;}
@@ -52,6 +55,7 @@
       .setup-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px;}
       .setup-card h2{font-size:15px;margin-bottom:5px;}
       .setup-card p{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:13px;}
+      .setup-card a{color:var(--accent);font-weight:800;}
       .setup-card textarea{width:100%;min-height:118px;resize:vertical;border:1px solid var(--line);
         border-radius:8px;background:var(--panel-strong);color:var(--text);padding:12px;font:12px ui-monospace,Menlo,monospace;}
       .setup-card textarea:focus{outline:2px solid var(--accent);border-color:var(--accent);}
@@ -78,24 +82,36 @@
 
       <div class="card">
         {% for name, ok, detail in checks %}
+        {% set setup_href = '#youtubeSetup' if name == 'YouTube downloads' else '#aiSetup' if name == 'AI highlights' else '#publishSetup' if 'publishing' in name else '' %}
         <div class="row">
           <div class="ic {{ 'ok' if ok else 'warn' }}">{{ '✓' if ok else '!' }}</div>
           <div class="row-main">
             <strong>{{ name }}</strong>
             <span>{{ detail }}</span>
           </div>
-          <span class="tag {{ 'ok' if ok else 'warn' }}">{{ 'OK' if ok else 'Setup' }}</span>
+          {% if ok %}
+          <span class="tag ok">OK</span>
+          {% elif setup_href %}
+          <a class="tag warn" href="{{ setup_href }}">Setup</a>
+          {% else %}
+          <span class="tag warn">Setup</span>
+          {% endif %}
         </div>
         {% endfor %}
       </div>
 
-      <div class="setup-card">
+      <div class="setup-card" id="youtubeSetup">
         <h2>YouTube download access</h2>
         {% if youtube_message %}<div class="msg ok">{{ youtube_message }}</div>{% endif %}
         {% if youtube_error %}<div class="msg err">{{ youtube_error }}</div>{% endif %}
         <p>
           Status: {{ "Ready" if youtube_status.ready else "Needs setup" }}
           {% if youtube_status.updated_at %} · Updated {{ youtube_status.updated_at }}{% endif %}
+        </p>
+        <p>
+          Sign in to YouTube in your browser, export cookies as a Netscape
+          cookies.txt file, paste the full text below, then save. The first line
+          should be <strong># Netscape HTTP Cookie File</strong>.
         </p>
         {% if is_admin %}
         <form method="post" action="{{ url_for('save_youtube_cookies') }}">
@@ -108,6 +124,24 @@
         {% else %}
         <p>Ask a workspace admin to update YouTube cookies.</p>
         {% endif %}
+      </div>
+
+      <div class="setup-card" id="aiSetup">
+        <h2>AI highlights</h2>
+        <p>
+          The app is currently using heuristic highlights. For AI-ranked clips,
+          set OPENAI_API_KEY with LLM_PROVIDER=openai, or set GEMINI_API_KEY
+          with LLM_PROVIDER=gemini in your hosting environment.
+        </p>
+      </div>
+
+      <div class="setup-card" id="publishSetup">
+        <h2>Publishing connections</h2>
+        <p>
+          Publishing setup needs platform OAuth credentials on the server.
+          Open the Social page after credentials are configured to connect
+          YouTube, Instagram, or Facebook accounts.
+        </p>
       </div>
 
       <div class="meta">

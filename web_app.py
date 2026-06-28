@@ -27,6 +27,7 @@ from flask import (
     session,
     url_for,
 )
+from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 from urllib.parse import quote as requests_quote, urlparse
 
@@ -504,6 +505,12 @@ def healthz():
     return jsonify({"status": "ok"})
 
 
+@app.errorhandler(RequestEntityTooLarge)
+def upload_too_large(_exc):
+    max_mb = app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024)
+    return jsonify({"error": f"File is too large. Maximum upload size is {max_mb} MB."}), 413
+
+
 @app.get("/api/status")
 @login_required
 def app_status():
@@ -688,6 +695,7 @@ def index():
         current_user=_current_user(),
         display_name=session.get("display", _current_user()),
         reel_templates=list_templates(),
+        max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
     )
 
 

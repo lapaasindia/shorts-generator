@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Shorts Console</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='v3') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='v4') }}">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#07080a">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -68,7 +68,7 @@
               <div class="studio-watermark" aria-hidden="true">shorts</div>
               <div class="studio-inner">
                 <p class="studio-wordmark">shorts<span>//</span>console</p>
-                <form id="jobForm">
+                <form id="jobForm" data-max-upload-mb="{{ max_upload_mb }}">
                   <div class="ingest-panel">
                     <fieldset class="source-switch">
                       <legend>Source</legend>
@@ -483,6 +483,6 @@
       </div>
     </div>
 
-    <script src="{{ url_for('static', filename='app.js', v='v3') }}"></script>
+    <script src="{{ url_for('static', filename='app.js', v='v4') }}"></script>
   </body>
 </html>
