@@ -133,6 +133,26 @@ def download_youtube_local(video_url: str, fmt: str = "720", out_dir: Optional[s
         "no_warnings": True,
         "noprogress": True,
     }
+
+    # YouTube now blocks the default "web" player client with 403 Forbidden
+    # (it requires a PO token). Use mobile/tv clients that still serve formats
+    # without one. Configurable via YTDLP_PLAYER_CLIENTS (comma-separated).
+    player_clients = [
+        c.strip() for c in os.getenv(
+            "YTDLP_PLAYER_CLIENTS", "android,ios,tv,web"
+        ).split(",") if c.strip()
+    ]
+    ydl_opts["extractor_args"] = {"youtube": {"player_client": player_clients}}
+
+    # Optional escape hatch: pull cookies from a local browser to defeat
+    # age/region/bot gating, e.g. YTDLP_COOKIES_FROM_BROWSER=chrome
+    cookies_browser = os.getenv("YTDLP_COOKIES_FROM_BROWSER", "").strip()
+    if cookies_browser:
+        ydl_opts["cookiesfrombrowser"] = (cookies_browser,)
+    cookie_file = os.getenv("YTDLP_COOKIE_FILE", "").strip()
+    if cookie_file and os.path.exists(cookie_file):
+        ydl_opts["cookiefile"] = cookie_file
+
     ffmpeg_location = _ffmpeg_location()
     if ffmpeg_location:
         ydl_opts["ffmpeg_location"] = ffmpeg_location
