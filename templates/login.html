@@ -159,16 +159,13 @@
             </div>
           </div>
           <div class="field">
-            <label for="username">Username</label>
+            <label for="email">Email</label>
             <div class="input-wrap">
               <span class="input-icon">@</span>
-              <input id="username" name="username" type="text" placeholder="lowercase, no spaces"
-                     autocomplete="username" pattern="[a-z0-9_]+" minlength="3" required
-                     value="{{ form_username or '' }}"
-                     oninvalid="this.setCustomValidity('Only lowercase letters, numbers, and underscores allowed (e.g. john_doe)')"
-                     oninput="this.setCustomValidity('')">
+              <input id="email" name="email" type="email" placeholder="you@example.com"
+                     autocomplete="email" required value="{{ form_email or '' }}">
             </div>
-            <span class="field-hint">Lowercase letters, numbers and _ only</span>
+            <span class="field-hint">You can sign in with this email later</span>
           </div>
           <div class="field-row">
             <div class="field">
@@ -217,10 +214,10 @@
               autocomplete="on">
           {% if error %}<div class="error-box">{{ error }}</div>{% endif %}
           <div class="field">
-            <label for="username">Username</label>
+            <label for="username">Email or username</label>
             <div class="input-wrap">
               <span class="input-icon">@</span>
-              <input id="username" name="username" type="text" placeholder="your username"
+              <input id="username" name="username" type="text" placeholder="you@example.com"
                      autocomplete="username" autofocus required>
             </div>
           </div>

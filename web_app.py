@@ -94,14 +94,50 @@ def _save_users(users: Dict) -> None:
 def _users_exist() -> bool:
     return bool(_load_users())
 
+def _normalize_email(email: str) -> str:
+    return email.strip().lower()
+
+def _username_from_email(email: str) -> str:
+    base = email.split("@", 1)[0]
+    username = re.sub(r"[^a-z0-9_]+", "_", base.lower()).strip("_")
+    return username or "user"
+
+def _unique_username(base: str, users: Dict) -> str:
+    username = base
+    suffix = 2
+    while username in users:
+        username = f"{base}_{suffix}"
+        suffix += 1
+    return username
+
+def _email_taken(email: str, users: Dict) -> bool:
+    return any(_normalize_email(str(user.get("email", ""))) == email for user in users.values())
+
+def _find_user_by_identifier(identifier: str, users: Dict):
+    ident = identifier.strip().lower()
+    if ident in users:
+        return ident, users[ident]
+    for username, user in users.items():
+        if _normalize_email(str(user.get("email", ""))) == ident:
+            return username, user
+    return None, None
+
 def _migrate_env_user() -> None:
     """On first run, migrate WEB_AUTH_USERNAME/PASSWORD into users.json."""
     env_user = os.getenv("WEB_AUTH_USERNAME", "").strip()
     env_pass = os.getenv("WEB_AUTH_PASSWORD", "").strip()
     if env_user and env_pass and not _users_exist():
-        users = {env_user: {"password": _hash_password(env_pass), "display": env_user.capitalize(), "created_at": _utc_now(), "role": "admin"}}
+        email = _normalize_email(env_user) if "@" in env_user else ""
+        username = _username_from_email(email) if email else env_user.lower()
+        users = {username: {
+            "password": _hash_password(env_pass),
+            "display": username.capitalize(),
+            "email": email,
+            "created_at": _utc_now(),
+            "role": "admin",
+        }}
         _save_users(users)
-        print(f"[auth] Migrated env user '{env_user}' into users.json", flush=True)
+        print(f"[auth] Migrated env user '{username}' into users.json", flush=True)
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
 
@@ -459,6 +495,7 @@ def me():
     user = users.get(_current_user() or "", {})
     return jsonify({
         "username": _current_user(),
+        "email": user.get("email"),
         "display": session.get("display"),
         "role": user.get("role", "member"),
         "created_at": user.get("created_at"),
@@ -467,39 +504,44 @@ def me():
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    # Only allow registration if NO users exist yet (first-time setup)
-    if _users_exist() and not _is_authenticated():
-        return redirect(url_for("login"))
-
     error = None
     success = None
-    form_username = ""
+    form_email = ""
     form_display = ""
 
     if request.method == "POST":
-        username = (request.form.get("username") or "").strip().lower()
+        email = _normalize_email(request.form.get("email") or "")
+        requested_username = (request.form.get("username") or "").strip().lower()
         password = request.form.get("password") or ""
         confirm  = request.form.get("confirm") or ""
-        display  = (request.form.get("display") or username).strip()
-        form_username = username
+        display  = (request.form.get("display") or (email.split("@", 1)[0] if email else "")).strip()
+        form_email = email
         form_display = display
 
-        if not username or len(username) < 3:
-            error = "Username must be at least 3 characters."
-        elif not re.match(r'^[a-z0-9_]+$', username):
-            error = "Username may only contain letters, numbers and underscores."
+        if not email or not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+            error = "Enter a valid email address."
         elif len(password) < 6:
             error = "Password must be at least 6 characters."
         elif password != confirm:
             error = "Passwords do not match."
         else:
             users = _load_users()
-            if username in users:
-                error = "Username already taken."
+            if _email_taken(email, users):
+                error = "An account with this email already exists."
             else:
+                username_base = requested_username or _username_from_email(email)
+                if len(username_base) < 3:
+                    username_base = f"{username_base}_user"
+                if not re.match(r'^[a-z0-9_]+$', username_base):
+                    error = "Username may only contain letters, numbers and underscores."
+                    return render_template("login.html", mode="register", error=error, success=success,
+                                           users_exist=_users_exist(),
+                                           form_email=form_email, form_display=form_display)
+                username = _unique_username(username_base, users)
                 users[username] = {
                     "password": _hash_password(password),
                     "display": display,
+                    "email": email,
                     "created_at": _utc_now(),
                     "role": "admin" if not users else "member",
                 }
@@ -512,7 +554,7 @@ def register():
 
     return render_template("login.html", mode="register", error=error, success=success,
                            users_exist=_users_exist(),
-                           form_username=form_username, form_display=form_display)
+                           form_email=form_email, form_display=form_display)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -524,11 +566,11 @@ def login():
 
     error = None
     if request.method == "POST":
-        username = (request.form.get("username") or "").strip().lower()
+        identifier = (request.form.get("username") or "").strip().lower()
         password = request.form.get("password") or ""
         remember = bool(request.form.get("remember"))
         users = _load_users()
-        user = users.get(username)
+        username, user = _find_user_by_identifier(identifier, users)
         if user and _verify_password(password, user["password"]):
             session.clear()
             session.permanent = remember
