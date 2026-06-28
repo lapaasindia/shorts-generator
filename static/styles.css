@@ -2212,3 +2212,21 @@ pre {
   width: 100%; height: 42px; border: 1px solid var(--line); border-radius: 8px; padding: 0 12px;
   background: var(--panel-strong); color: var(--text); font: inherit; font-size: 13px;
 }
+
+/* ─── Clickable feature pills + control flash ──────────────────────────────── */
+.tool-item {
+  cursor: pointer;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  transition: transform 120ms, opacity 120ms;
+}
+.tool-item:hover { transform: translateY(-2px); opacity: .92; }
+.tool-item:active { transform: translateY(0); }
+.pill-flash {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(214,255,69,.15) !important;
+  transition: outline-color 200ms, box-shadow 200ms;
+}

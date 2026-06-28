@@ -192,7 +192,11 @@
           <button class="submit-btn" type="submit">
             Create account <span class="btn-arr">→</span>
           </button>
+          {% if users_exist %}
           <div class="alt-link">Already have an account? <a href="/login">Sign in</a></div>
+          {% else %}
+          <div class="alt-link">This is the first account — it becomes the workspace admin.</div>
+          {% endif %}
         </form>
 
         {% else %}

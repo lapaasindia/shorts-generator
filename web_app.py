@@ -423,6 +423,33 @@ def app_status():
     })
 
 
+@app.get("/status")
+@login_required
+def status_page():
+    social = social_publish.configured_platforms()
+    with jobs_lock:
+        job_count = len(jobs)
+    checks = [
+        ("Web server", True, "Running"),
+        ("Templates", len(list_templates()) > 0, f"{len(list_templates())} styles loaded"),
+        ("Transcriber", True, generator_config.TRANSCRIBER_PROVIDER),
+        ("AI highlights", generator_config.LLM_PROVIDER != "heuristic",
+         generator_config.LLM_PROVIDER + (" (set OPENAI_API_KEY/GEMINI_API_KEY for AI)"
+                                          if generator_config.LLM_PROVIDER == "heuristic" else "")),
+        ("YouTube publishing", social.get("youtube"), "Connected app" if social.get("youtube") else "Not configured"),
+        ("Instagram publishing", social.get("instagram"), "Connected app" if social.get("instagram") else "Not configured"),
+        ("Facebook publishing", social.get("facebook"), "Connected app" if social.get("facebook") else "Not configured"),
+    ]
+    return render_template(
+        "status.html",
+        checks=checks,
+        warnings=STARTUP_WARNINGS,
+        job_count=job_count,
+        output_dir=str(WEB_OUTPUT_DIR),
+        user=_current_user(),
+    )
+
+
 @app.get("/api/me")
 @login_required
 def me():
@@ -477,7 +504,8 @@ def register():
                 session["display"] = display
                 return redirect(url_for("index"))
 
-    return render_template("login.html", mode="register", error=error, success=success)
+    return render_template("login.html", mode="register", error=error, success=success,
+                           users_exist=_users_exist())
 
 
 @app.route("/login", methods=["GET", "POST"])

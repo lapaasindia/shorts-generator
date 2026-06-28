@@ -77,6 +77,41 @@ document.querySelectorAll(".nav-link[data-section]").forEach(link => {
   });
 });
 
+// ─── Feature pills (tool-row) → jump to the matching control ──────────────────
+(function wireToolPills() {
+  const TOOL_TARGETS = {
+    aspect: "aspectRatio",     // 9:16 frame selector
+    captions: "language",      // speech language / captions
+    editor: "focusPrompt",     // smart editor → focus moments + setup
+    hook: "focusPrompt",       // hook finder → focus moments
+    templates: "templates",    // reel templates grid
+  };
+  document.querySelectorAll(".tool-item[data-tool]").forEach(pill => {
+    pill.addEventListener("click", () => {
+      showSection("create");
+      // active state
+      document.querySelectorAll(".tool-item").forEach(t => t.classList.remove("active"));
+      pill.classList.add("active");
+      const tool = pill.dataset.tool;
+      // Make sure the Edit setup panel is open for control-level targets.
+      const panel = document.querySelector(".setup-panel");
+      if (panel && tool !== "templates") panel.open = true;
+      const targetId = TOOL_TARGETS[tool];
+      const target = document.getElementById(targetId);
+      if (!target) return;
+      setTimeout(() => {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        // Briefly highlight the control so it's obvious what changed.
+        if (target.tagName === "SELECT" || target.tagName === "INPUT") {
+          target.focus({ preventScroll: true });
+          target.classList.add("pill-flash");
+          setTimeout(() => target.classList.remove("pill-flash"), 1200);
+        }
+      }, 60);
+    });
+  });
+})();
+
 // ─── Utilities ────────────────────────────────────────────────────────────────
 function setStatus(status) {
   const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : "Idle";

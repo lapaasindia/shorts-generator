@@ -42,7 +42,7 @@
         </nav>
 
         <div class="sidebar-bottom">
-          <a class="nav-link" href="{{ url_for('healthz') }}" target="_blank"><i>?</i><span>Status</span></a>
+          <a class="nav-link" href="{{ url_for('status_page') }}" target="_blank"><i>?</i><span>Status</span></a>
           {% if auth_enabled %}
             <form method="post" action="{{ url_for('logout') }}">
               <button class="nav-link nav-button" type="submit"><i>↪</i><span>Logout</span></button>
@@ -92,11 +92,11 @@
                     </button>
                   </div>
                   <div class="tool-row" aria-label="Creation tools">
-                    <div class="tool-item active"><span>9:16</span><strong>Long to shorts</strong></div>
-                    <div class="tool-item"><span>CC</span><strong>AI captions</strong></div>
-                    <div class="tool-item"><span>✂</span><strong>Smart editor</strong></div>
-                    <div class="tool-item"><span>AI</span><strong>Hook finder</strong></div>
-                    <div class="tool-item"><span>32</span><strong>Templates</strong></div>
+                    <button type="button" class="tool-item active" data-tool="aspect"><span>9:16</span><strong>Long to shorts</strong></button>
+                    <button type="button" class="tool-item" data-tool="captions"><span>CC</span><strong>AI captions</strong></button>
+                    <button type="button" class="tool-item" data-tool="editor"><span>✂</span><strong>Smart editor</strong></button>
+                    <button type="button" class="tool-item" data-tool="hook"><span>AI</span><strong>Hook finder</strong></button>
+                    <button type="button" class="tool-item" data-tool="templates"><span>32</span><strong>Templates</strong></button>
                   </div>
                   <details class="setup-panel" open>
                     <summary>

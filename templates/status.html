@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>System Status · Shorts Console</title>
+    <style>
+      :root{
+        --bg:#07080a;--panel:#111215;--panel-strong:#17181c;--line:#27292f;
+        --text:#f5f5f2;--muted:#8e929c;--white:#fff;--black:#090909;
+        --accent:#d6ff45;--coral:#ff6b5e;--gold:#e2bd52;--teal:#55d5c9;
+      }
+      *{box-sizing:border-box;margin:0;padding:0;}
+      body{min-height:100vh;background:var(--bg);color:var(--text);
+        font-family:"Avenir Next","Gill Sans","Trebuchet MS",sans-serif;
+        display:flex;justify-content:center;padding:48px 20px;}
+      .wrap{width:100%;max-width:640px;}
+      .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+      .brand{font-family:"Iowan Old Style",Georgia,serif;font-style:italic;font-weight:900;
+        font-size:24px;color:var(--white);text-decoration:none;}
+      .brand span{color:var(--accent);}
+      .back{font-size:12px;color:var(--accent);text-decoration:none;font-weight:800;}
+      h1{font-family:"Iowan Old Style",Georgia,serif;font-style:italic;font-size:32px;
+        font-weight:900;margin:18px 0 4px;}
+      .sub{font-size:13px;color:var(--muted);margin-bottom:28px;}
+      .overall{display:inline-flex;align-items:center;gap:9px;padding:7px 14px;border-radius:99px;
+        background:rgba(214,255,69,.1);border:1px solid rgba(214,255,69,.3);color:var(--accent);
+        font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;margin-bottom:24px;}
+      .overall .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);}
+      .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:18px;}
+      .row{display:flex;align-items:center;gap:14px;padding:15px 18px;border-bottom:1px solid var(--line);}
+      .row:last-child{border-bottom:none;}
+      .ic{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+        font-size:14px;font-weight:900;flex-shrink:0;}
+      .ic.ok{background:rgba(214,255,69,.14);color:var(--accent);}
+      .ic.warn{background:rgba(226,189,82,.14);color:var(--gold);}
+      .row-main{flex:1;}
+      .row-main strong{display:block;font-size:14px;}
+      .row-main span{font-size:12px;color:var(--muted);}
+      .tag{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;
+        padding:4px 9px;border-radius:5px;}
+      .tag.ok{background:var(--accent);color:var(--black);}
+      .tag.warn{background:rgba(226,189,82,.16);color:var(--gold);border:1px solid rgba(226,189,82,.3);}
+      .meta{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
+      .meta-item{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;}
+      .meta-item span{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:800;}
+      .meta-item strong{display:block;font-size:18px;margin-top:4px;word-break:break-all;}
+      .warnbox{background:rgba(255,107,94,.06);border:1px solid rgba(255,107,94,.25);border-radius:10px;
+        padding:14px 16px;font-size:12px;color:var(--coral);}
+      .warnbox strong{display:block;margin-bottom:6px;}
+      .warnbox ul{margin:0;padding-left:18px;}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="head">
+        <a class="brand" href="/">shorts<span>//</span>console</a>
+        <a class="back" href="/">← Back to app</a>
+      </div>
+      <h1>System Status</h1>
+      <p class="sub">Live health of your Shorts Console deployment.</p>
+
+      {% set all_ok = checks | selectattr(1) | list | length == checks | length %}
+      <div class="overall"><span class="dot"></span>{{ "All systems operational" if all_ok else "Operational · some optional features need setup" }}</div>
+
+      <div class="card">
+        {% for name, ok, detail in checks %}
+        <div class="row">
+          <div class="ic {{ 'ok' if ok else 'warn' }}">{{ '✓' if ok else '!' }}</div>
+          <div class="row-main">
+            <strong>{{ name }}</strong>
+            <span>{{ detail }}</span>
+          </div>
+          <span class="tag {{ 'ok' if ok else 'warn' }}">{{ 'OK' if ok else 'Setup' }}</span>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="meta">
+        <div class="meta-item"><span>Jobs in memory</span><strong>{{ job_count }}</strong></div>
+        <div class="meta-item"><span>Signed in as</span><strong>{{ user or '—' }}</strong></div>
+      </div>
+
+      {% if warnings %}
+      <div class="warnbox">
+        <strong>⚠ Startup warnings</strong>
+        <ul>{% for w in warnings %}<li>{{ w }}</li>{% endfor %}</ul>
+      </div>
+      {% endif %}
+    </div>
+  </body>
+</html>
