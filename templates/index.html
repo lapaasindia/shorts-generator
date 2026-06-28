@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Shorts Console</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='quickdark1') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='v3') }}">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#07080a">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -27,16 +27,22 @@
 
         <nav class="nav-stack">
           <span class="nav-label">Create</span>
-          <a class="nav-link active" href="#create"><i>⌂</i><span>Home</span></a>
-          <a class="nav-link" href="#templates"><i>⊞</i><span>Reel Templates</span></a>
-          <a class="nav-link" href="#projects"><i>□</i><span>Projects</span></a>
+          <a class="nav-link active" href="#create" data-section="create"><i>⌂</i><span>Home</span></a>
+          <a class="nav-link" href="#templates" data-section="create"><i>⊞</i><span>Templates</span></a>
+          <a class="nav-link" href="#projects" data-section="create"><i>□</i><span>Projects</span></a>
+          <span class="nav-label">Publish</span>
+          <a class="nav-link" href="#calendar" data-section="calendar"><i>◫</i><span>Calendar</span></a>
+          <a class="nav-link" href="#social" data-section="social"><i>◈</i><span>Social</span></a>
+          <span class="nav-label">Learn</span>
+          <a class="nav-link" href="#insights" data-section="insights"><i>≋</i><span>Insights</span></a>
+          <a class="nav-link" href="#compare" data-section="compare"><i>⇌</i><span>Compare</span></a>
           <span class="nav-label">Review</span>
-          <a class="nav-link" href="#outputs"><i>◫</i><span>Renders</span></a>
-          <a class="nav-link" href="#runLog"><i>≡</i><span>Run Log</span></a>
+          <a class="nav-link" href="#outputs" data-section="create"><i>▷</i><span>Renders</span></a>
+          <a class="nav-link" href="#runLog" data-section="create"><i>≡</i><span>Run Log</span></a>
         </nav>
 
         <div class="sidebar-bottom">
-          <a class="nav-link" href="{{ url_for('healthz') }}" target="_blank"><i>?</i><span>System status</span></a>
+          <a class="nav-link" href="{{ url_for('healthz') }}" target="_blank"><i>?</i><span>Status</span></a>
           {% if auth_enabled %}
             <form method="post" action="{{ url_for('logout') }}">
               <button class="nav-link nav-button" type="submit"><i>↪</i><span>Logout</span></button>
@@ -47,7 +53,7 @@
 
       <div class="main-column">
         <header class="app-topbar">
-          <div class="breadcrumb"><span>Workspace</span><strong>AI clipping</strong></div>
+          <div class="breadcrumb"><span>Workspace</span><strong id="topbarTitle">AI clipping</strong></div>
           <div class="top-actions">
             <div class="status-pill" id="statusPill">Idle</div>
             <span class="team-badge">TEAM</span>
@@ -55,178 +61,393 @@
         </header>
 
         <main class="content">
-          <section class="studio" id="create" aria-label="Short generation workspace">
-            <div class="studio-watermark" aria-hidden="true">shorts</div>
-            <div class="studio-inner">
-              <p class="studio-wordmark">shorts<span>//</span>console</p>
 
-              <form id="jobForm">
-                <div class="ingest-panel">
-                  <fieldset class="source-switch">
-                    <legend>Source</legend>
-                    <label>
-                      <input type="radio" name="source_type" value="url" checked>
-                      <span>Link</span>
-                    </label>
-                    <label>
-                      <input type="radio" name="source_type" value="upload">
-                      <span>Upload</span>
-                    </label>
-                  </fieldset>
-
-                  <div class="field source-field" data-source-panel="url">
-                    <label for="videoUrl">Source video</label>
-                    <div class="source-input-wrap">
-                      <span aria-hidden="true">↗</span>
-                      <input id="videoUrl" name="video_url" type="url" placeholder="Drop a YouTube link" autocomplete="off">
+          <!-- ═══════════ CREATE ═══════════ -->
+          <div id="section-create">
+            <section class="studio" id="create" aria-label="Short generation workspace">
+              <div class="studio-watermark" aria-hidden="true">shorts</div>
+              <div class="studio-inner">
+                <p class="studio-wordmark">shorts<span>//</span>console</p>
+                <form id="jobForm">
+                  <div class="ingest-panel">
+                    <fieldset class="source-switch">
+                      <legend>Source</legend>
+                      <label><input type="radio" name="source_type" value="url" checked><span>Link</span></label>
+                      <label><input type="radio" name="source_type" value="upload"><span>Upload</span></label>
+                    </fieldset>
+                    <div class="field source-field" data-source-panel="url">
+                      <label for="videoUrl">Source video</label>
+                      <div class="source-input-wrap">
+                        <span aria-hidden="true">↗</span>
+                        <input id="videoUrl" name="video_url" type="url" placeholder="Drop a YouTube link" autocomplete="off">
+                      </div>
                     </div>
+                    <div class="field source-field hidden" data-source-panel="upload">
+                      <label for="videoFile">Local video</label>
+                      <input id="videoFile" name="video_file" type="file" accept="video/*,audio/*">
+                    </div>
+                    <button class="run-button" type="submit" id="runButton">
+                      <span class="run-icon" aria-hidden="true"></span>
+                      Get clips in 1 click
+                    </button>
                   </div>
-
-                  <div class="field source-field hidden" data-source-panel="upload">
-                    <label for="videoFile">Local video</label>
-                    <input id="videoFile" name="video_file" type="file" accept="video/*,audio/*">
+                  <div class="tool-row" aria-label="Creation tools">
+                    <div class="tool-item active"><span>9:16</span><strong>Long to shorts</strong></div>
+                    <div class="tool-item"><span>CC</span><strong>AI captions</strong></div>
+                    <div class="tool-item"><span>✂</span><strong>Smart editor</strong></div>
+                    <div class="tool-item"><span>AI</span><strong>Hook finder</strong></div>
+                    <div class="tool-item"><span>32</span><strong>Templates</strong></div>
                   </div>
-
-                  <button class="run-button" type="submit" id="runButton">
-                    <span class="run-icon" aria-hidden="true"></span>
-                    Get clips in 1 click
-                  </button>
-                </div>
-
-                <div class="tool-row" aria-label="Creation tools">
-                  <div class="tool-item active"><span>9:16</span><strong>Long to shorts</strong></div>
-                  <div class="tool-item"><span>CC</span><strong>AI captions</strong></div>
-                  <div class="tool-item"><span>✂</span><strong>Smart editor</strong></div>
-                  <div class="tool-item"><span>AI</span><strong>Hook finder</strong></div>
-                  <div class="tool-item"><span>20</span><strong>Templates</strong></div>
-                </div>
-
-                <details class="setup-panel" open>
-                  <summary>
-                    <span>Edit setup</span>
-                    <strong><span id="selectedTemplateCount">1</span> template · <span id="renderEstimate">3</span> renders</strong>
-                  </summary>
-                  <div class="setup-body">
-                    <div class="option-grid">
-                      <div class="field">
-                        <label for="numClips">Reels count</label>
-                        <input id="numClips" name="num_clips" type="number" min="1" value="3">
-                      </div>
-                      <div class="field">
-                        <label for="language">Speech language</label>
-                        <select id="language" name="language">
-                          <option value="en" selected>English</option>
-                          <option value="hi">Hindi</option>
-                          <option value="ta">Tamil</option>
-                          <option value="te">Telugu</option>
-                          <option value="mr">Marathi</option>
-                          <option value="bn">Bengali</option>
-                          <option value="gu">Gujarati</option>
-                          <option value="kn">Kannada</option>
-                          <option value="ml">Malayalam</option>
-                          <option value="">Auto detect</option>
-                        </select>
-                      </div>
-                      <div class="field">
-                        <label for="aspectRatio">Frame</label>
-                        <select id="aspectRatio" name="aspect_ratio">
-                          <option value="9:16" selected>9:16 vertical</option>
-                          <option value="1:1">1:1 square</option>
-                          <option value="4:5">4:5 portrait</option>
-                          <option value="16:9">16:9 wide</option>
-                        </select>
-                      </div>
-                      <div class="field">
-                        <label for="downloadFormat">Quality</label>
-                        <select id="downloadFormat" name="download_format">
-                          <option value="360">360p</option>
-                          <option value="480">480p</option>
-                          <option value="720" selected>720p</option>
-                          <option value="1080">1080p</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div class="field focus-field">
-                      <label for="focusPrompt">Include specific moments</label>
-                      <input id="focusPrompt" name="focus_prompt" type="text" placeholder="Example: find the strongest warning about AI jobs">
-                    </div>
-
-                    <div class="edit-settings">
-                      <label class="switch-control">
-                        <input type="checkbox" name="nonlinear_edit" checked>
-                        <span aria-hidden="true"></span>
-                        <strong>Hook-first remix</strong>
-                      </label>
-                      <label class="switch-control">
-                        <input type="checkbox" name="upscale" checked>
-                        <span aria-hidden="true"></span>
-                        <strong>4K upscale</strong>
-                      </label>
-                      <div class="render-estimate">
-                        <span>Planned renders</span>
-                        <strong id="renderEstimateMirror">3</strong>
-                      </div>
-                    </div>
-
-                    <section class="template-picker" id="templates" aria-labelledby="templateTitle">
-                      <div class="template-heading">
-                        <div>
-                          <span class="field-label" id="templateTitle">Reel templates</span>
-                          <strong>20 styles</strong>
+                  <details class="setup-panel" open>
+                    <summary>
+                      <span>Edit setup</span>
+                      <strong><span id="selectedTemplateCount">1</span> template · <span id="renderEstimate">3</span> renders</strong>
+                    </summary>
+                    <div class="setup-body">
+                      <div class="option-grid">
+                        <div class="field">
+                          <label for="numClips">Reels count</label>
+                          <input id="numClips" name="num_clips" type="number" min="1" value="3">
                         </div>
-                        <div class="template-actions">
-                          <button class="text-button compact" type="button" id="recommendedTemplates">Recommended</button>
-                          <button class="text-button compact" type="button" id="selectAllTemplates">All 20</button>
+                        <div class="field">
+                          <label for="language">Speech language</label>
+                          <select id="language" name="language">
+                            <option value="en" selected>English</option>
+                            <option value="hi">Hindi</option>
+                            <option value="ta">Tamil</option>
+                            <option value="te">Telugu</option>
+                            <option value="mr">Marathi</option>
+                            <option value="bn">Bengali</option>
+                            <option value="gu">Gujarati</option>
+                            <option value="kn">Kannada</option>
+                            <option value="ml">Malayalam</option>
+                            <option value="">Auto detect</option>
+                          </select>
+                        </div>
+                        <div class="field">
+                          <label for="aspectRatio">Frame</label>
+                          <select id="aspectRatio" name="aspect_ratio">
+                            <option value="9:16" selected>9:16 vertical</option>
+                            <option value="1:1">1:1 square</option>
+                            <option value="4:5">4:5 portrait</option>
+                            <option value="16:9">16:9 wide</option>
+                          </select>
+                        </div>
+                        <div class="field">
+                          <label for="downloadFormat">Quality</label>
+                          <select id="downloadFormat" name="download_format">
+                            <option value="360">360p</option>
+                            <option value="480">480p</option>
+                            <option value="720" selected>720p</option>
+                            <option value="1080">1080p</option>
+                          </select>
                         </div>
                       </div>
-                      <div class="template-grid">
-                        {% for template in reel_templates %}
-                          <label class="template-option" style="--template-accent: {{ template.accent }}; --template-surface: {{ template.surface }}; --template-font: {{ template.font }}">
-                            <input
-                              type="checkbox"
-                              name="template_ids"
-                              value="{{ template.id }}"
-                              {% if template.id == 'fanpage-gold' %}checked{% endif %}
-                            >
-                            <span class="template-preview" aria-hidden="true"><i></i><b></b><em></em></span>
-                            <span class="template-copy"><strong>{{ template.name }}</strong><small>{{ template.signal }}</small></span>
-                          </label>
-                        {% endfor %}
+                      <div class="field focus-field">
+                        <label for="focusPrompt">Include specific moments</label>
+                        <input id="focusPrompt" name="focus_prompt" type="text" placeholder="Example: find the strongest warning about AI jobs">
                       </div>
-                    </section>
+                      <div class="edit-settings">
+                        <label class="switch-control">
+                          <input type="checkbox" name="nonlinear_edit" checked>
+                          <span aria-hidden="true"></span>
+                          <strong>Hook-first remix</strong>
+                        </label>
+                        <label class="switch-control">
+                          <input type="checkbox" name="upscale" checked>
+                          <span aria-hidden="true"></span>
+                          <strong>4K upscale</strong>
+                        </label>
+                        <div class="render-estimate">
+                          <span>Planned renders</span>
+                          <strong id="renderEstimateMirror">3</strong>
+                        </div>
+                      </div>
+                      <section class="template-picker" id="templates" aria-labelledby="templateTitle">
+                        <div class="template-heading">
+                          <div>
+                            <span class="field-label" id="templateTitle">Reel templates</span>
+                            <strong>32 styles</strong>
+                          </div>
+                          <div class="template-actions">
+                            <button class="text-button compact" type="button" id="recommendedTemplates">Recommended</button>
+                            <button class="text-button compact" type="button" id="selectAllTemplates">All 32</button>
+                          </div>
+                        </div>
+                        <div class="template-grid">
+                          {% for template in reel_templates %}
+                            <label class="template-option" style="--template-accent: {{ template.accent }}; --template-surface: {{ template.surface }}; --template-font: {{ template.font }}">
+                              <input type="checkbox" name="template_ids" value="{{ template.id }}" {% if template.id == 'fanpage-gold' %}checked{% endif %}>
+                              <span class="template-preview" aria-hidden="true"><i></i><b></b><em></em></span>
+                              <span class="template-copy"><strong>{{ template.name }}</strong><small>{{ template.signal }}</small></span>
+                            </label>
+                          {% endfor %}
+                        </div>
+                      </section>
+                    </div>
+                  </details>
+                </form>
+              </div>
+            </section>
+
+            <section class="job-strip" aria-label="Job status">
+              <div><span class="metric-label">Job</span><strong id="jobId">None</strong></div>
+              <div><span class="metric-label">Candidates</span><strong id="candidateCount">0</strong></div>
+              <div><span class="metric-label">Reels</span><strong id="reelCount">0</strong></div>
+              <div><span class="metric-label">Rendered</span><strong id="shortCount">0</strong></div>
+            </section>
+
+            <section class="recent-panel" id="projects" aria-label="Recent projects">
+              <div class="section-heading">
+                <div><p>Library</p><h1>Recent projects</h1></div>
+                <button class="text-button compact" type="button" id="refreshJobs">Refresh</button>
+              </div>
+              <div class="recent-list" id="recentJobs"></div>
+            </section>
+
+            <section class="output-layout" id="outputs">
+              <div class="results" id="results" aria-live="polite"></div>
+              <aside class="log-panel" id="runLog">
+                <div class="panel-title">Run log</div>
+                <pre id="logOutput">Waiting.</pre>
+              </aside>
+            </section>
+          </div>
+
+          <!-- ═══════════ CALENDAR ═══════════ -->
+          <div id="section-calendar" class="hidden">
+            <div class="page-header">
+              <div><p class="page-kicker">Content Planning</p><h1 class="page-title">Content Calendar</h1></div>
+              <div class="page-actions">
+                <button class="text-button compact" id="calPrev">← Prev</button>
+                <span class="cal-month-label" id="calMonthLabel"></span>
+                <button class="text-button compact" id="calNext">Next →</button>
+              </div>
+            </div>
+
+            <div class="calendar-legend">
+              <span class="cal-dot render"></span><span>Render</span>
+              <span class="cal-dot viral"></span><span>Viral post</span>
+              <span class="cal-dot growing"></span><span>Growing</span>
+              <span class="cal-dot underperforming"></span><span>Underperforming</span>
+            </div>
+
+            <div class="calendar-grid-wrap">
+              <div class="cal-weekdays">
+                <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+              </div>
+              <div class="calendar-grid" id="calGrid"></div>
+            </div>
+
+            <div class="cal-event-list" id="calEventList">
+              <p class="cal-event-empty">Click a date to see events</p>
+            </div>
+          </div>
+
+          <!-- ═══════════ SOCIAL ═══════════ -->
+          <div id="section-social" class="hidden">
+            <div class="page-header">
+              <div><p class="page-kicker">Integrations</p><h1 class="page-title">Social Connects</h1></div>
+            </div>
+
+            <div class="social-grid">
+              <div class="social-card" id="socialCard-youtube">
+                <div class="social-card-header">
+                  <div class="social-icon yt">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.7 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
                   </div>
-                </details>
-              </form>
+                  <div class="social-card-title">
+                    <strong class="social-name">YouTube</strong>
+                    <span class="social-status" id="yt-status">Not connected</span>
+                  </div>
+                  <div class="social-badge" id="yt-badge"></div>
+                </div>
+                <div class="social-card-body" id="yt-body">
+                  <p class="social-desc">Connect your YouTube channel to track short video performance, compare clips, and learn from what goes viral.</p>
+                  <div class="field">
+                    <label for="yt-handle">Channel handle or URL</label>
+                    <input id="yt-handle" type="text" placeholder="@YourChannel or channel URL">
+                  </div>
+                  <button class="connect-btn yt-btn" onclick="connectSocial('youtube')">Connect YouTube</button>
+                </div>
+                <div class="social-card-connected hidden" id="yt-connected">
+                  <div class="connected-info">
+                    <span class="connected-handle" id="yt-handle-display"></span>
+                    <span class="connected-time" id="yt-time-display"></span>
+                  </div>
+                  <button class="disconnect-btn" onclick="disconnectSocial('youtube')">Disconnect</button>
+                </div>
+              </div>
+
+              <div class="social-card" id="socialCard-instagram">
+                <div class="social-card-header">
+                  <div class="social-icon ig">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M12 2.2c3.2 0 3.6 0 4.9.1 3.3.1 4.8 1.7 4.9 4.9.1 1.3.1 1.6.1 4.8s0 3.6-.1 4.9c-.1 3.2-1.6 4.8-4.9 4.9-1.3.1-1.6.1-4.9.1s-3.6 0-4.9-.1c-3.2-.1-4.8-1.7-4.9-4.9C2.1 15.6 2 15.3 2 12s0-3.6.1-4.9C2.3 3.9 3.8 2.3 7.1 2.3 8.4 2.2 8.8 2.2 12 2.2zM12 0C8.7 0 8.3 0 7.1.1 2.7.3.3 2.7.1 7.1 0 8.3 0 8.7 0 12s0 3.7.1 4.9c.2 4.4 2.6 6.8 7 7C8.3 24 8.7 24 12 24s3.7 0 4.9-.1c4.4-.2 6.8-2.6 7-7 .1-1.2.1-1.6.1-4.9s0-3.7-.1-4.9c-.2-4.4-2.6-6.8-7-7C15.7 0 15.3 0 12 0zm0 5.8a6.2 6.2 0 1 0 0 12.4A6.2 6.2 0 0 0 12 5.8zm0 10.2a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.4-11.8a1.4 1.4 0 1 0 0 2.8 1.4 1.4 0 0 0 0-2.8z"/></svg>
+                  </div>
+                  <div class="social-card-title">
+                    <strong class="social-name">Instagram</strong>
+                    <span class="social-status" id="ig-status">Not connected</span>
+                  </div>
+                  <div class="social-badge" id="ig-badge"></div>
+                </div>
+                <div class="social-card-body" id="ig-body">
+                  <p class="social-desc">Link your Instagram to track Reels performance, analyze what drives saves and shares, and optimize your content strategy.</p>
+                  <div class="field">
+                    <label for="ig-handle">Instagram username</label>
+                    <input id="ig-handle" type="text" placeholder="@yourhandle">
+                  </div>
+                  <button class="connect-btn ig-btn" onclick="connectSocial('instagram')">Connect Instagram</button>
+                </div>
+                <div class="social-card-connected hidden" id="ig-connected">
+                  <div class="connected-info">
+                    <span class="connected-handle" id="ig-handle-display"></span>
+                    <span class="connected-time" id="ig-time-display"></span>
+                  </div>
+                  <button class="disconnect-btn" onclick="disconnectSocial('instagram')">Disconnect</button>
+                </div>
+              </div>
+
+              <div class="social-card" id="socialCard-facebook">
+                <div class="social-card-header">
+                  <div class="social-icon fb">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M24 12.1C24 5.4 18.6 0 12 0S0 5.4 0 12.1C0 18.1 4.4 23.1 10.1 24v-8.4H7.1v-3.5h3V9.4c0-3 1.8-4.7 4.5-4.7 1.3 0 2.7.2 2.7.2v3h-1.5c-1.5 0-2 .9-2 1.9v2.2h3.3l-.5 3.5h-2.8V24C19.6 23.1 24 18.1 24 12.1z"/></svg>
+                  </div>
+                  <div class="social-card-title">
+                    <strong class="social-name">Facebook</strong>
+                    <span class="social-status" id="fb-status">Not connected</span>
+                  </div>
+                  <div class="social-badge" id="fb-badge"></div>
+                </div>
+                <div class="social-card-body" id="fb-body">
+                  <p class="social-desc">Connect Facebook Page or Reels to monitor video performance, track audience growth, and learn from top-performing content.</p>
+                  <div class="field">
+                    <label for="fb-handle">Page name or URL</label>
+                    <input id="fb-handle" type="text" placeholder="Your Page name or URL">
+                  </div>
+                  <button class="connect-btn fb-btn" onclick="connectSocial('facebook')">Connect Facebook</button>
+                </div>
+                <div class="social-card-connected hidden" id="fb-connected">
+                  <div class="connected-info">
+                    <span class="connected-handle" id="fb-handle-display"></span>
+                    <span class="connected-time" id="fb-time-display"></span>
+                  </div>
+                  <button class="disconnect-btn" onclick="disconnectSocial('facebook')">Disconnect</button>
+                </div>
+              </div>
             </div>
-          </section>
 
-          <section class="job-strip" aria-label="Job status">
-            <div><span class="metric-label">Job</span><strong id="jobId">None</strong></div>
-            <div><span class="metric-label">Candidates</span><strong id="candidateCount">0</strong></div>
-            <div><span class="metric-label">Reels</span><strong id="reelCount">0</strong></div>
-            <div><span class="metric-label">Rendered</span><strong id="shortCount">0</strong></div>
-          </section>
-
-          <section class="recent-panel" id="projects" aria-label="Recent projects">
-            <div class="section-heading">
-              <div><p>Library</p><h1>Recent projects</h1></div>
-              <button class="text-button compact" type="button" id="refreshJobs">Refresh</button>
+            <div class="social-tips">
+              <div class="tips-header"><span>◉</span> How tracking works</div>
+              <ul>
+                <li>Enter your channel/profile handle and click Connect.</li>
+                <li>Add posts manually in the <strong>Insights</strong> tab with view/like counts.</li>
+                <li>The AI analyzes each post and surfaces learnings in <strong>Compare</strong>.</li>
+                <li>Full API integration coming soon — for now, enter metrics manually after posting.</li>
+              </ul>
             </div>
-            <div class="recent-list" id="recentJobs"></div>
-          </section>
+          </div>
 
-          <section class="output-layout" id="outputs">
-            <div class="results" id="results" aria-live="polite"></div>
-            <aside class="log-panel" id="runLog">
-              <div class="panel-title">Run log</div>
-              <pre id="logOutput">Waiting.</pre>
-            </aside>
-          </section>
+          <!-- ═══════════ INSIGHTS ═══════════ -->
+          <div id="section-insights" class="hidden">
+            <div class="page-header">
+              <div><p class="page-kicker">AI Learning</p><h1 class="page-title">Post Insights</h1></div>
+              <button class="text-button compact" id="addPostBtn">+ Add Post</button>
+            </div>
+
+            <div class="modal-overlay hidden" id="addPostModal">
+              <div class="modal">
+                <div class="modal-header">
+                  <strong>Add Post Analytics</strong>
+                  <button class="modal-close" onclick="closeAddPost()">✕</button>
+                </div>
+                <div class="modal-body">
+                  <div class="modal-grid">
+                    <div class="field">
+                      <label for="ap-title">Post title</label>
+                      <input id="ap-title" type="text" placeholder="What was this clip about?">
+                    </div>
+                    <div class="field">
+                      <label for="ap-platform">Platform</label>
+                      <select id="ap-platform">
+                        <option value="youtube">YouTube Shorts</option>
+                        <option value="instagram">Instagram Reels</option>
+                        <option value="facebook">Facebook Reels</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label for="ap-date">Posted date</label>
+                      <input id="ap-date" type="date">
+                    </div>
+                    <div class="field">
+                      <label for="ap-template">Template used</label>
+                      <input id="ap-template" type="text" placeholder="e.g. fanpage-gold">
+                    </div>
+                    <div class="field">
+                      <label for="ap-views">Views</label>
+                      <input id="ap-views" type="number" min="0" placeholder="0">
+                    </div>
+                    <div class="field">
+                      <label for="ap-likes">Likes</label>
+                      <input id="ap-likes" type="number" min="0" placeholder="0">
+                    </div>
+                    <div class="field">
+                      <label for="ap-comments">Comments</label>
+                      <input id="ap-comments" type="number" min="0" placeholder="0">
+                    </div>
+                    <div class="field">
+                      <label for="ap-shares">Shares</label>
+                      <input id="ap-shares" type="number" min="0" placeholder="0">
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="ap-notes">Notes (optional)</label>
+                    <input id="ap-notes" type="text" placeholder="Any context about this post">
+                  </div>
+                  <button class="run-button" style="margin-top:14px" onclick="submitPost()">Save &amp; Analyze</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="insights-summary" id="insightsSummary"></div>
+            <div class="posts-list" id="postsList"></div>
+          </div>
+
+          <!-- ═══════════ COMPARE ═══════════ -->
+          <div id="section-compare" class="hidden">
+            <div class="page-header">
+              <div><p class="page-kicker">Side-by-Side</p><h1 class="page-title">Post Comparison</h1></div>
+            </div>
+
+            <div class="compare-selectors">
+              <div class="field">
+                <label>Post A</label>
+                <select id="compareA"></select>
+              </div>
+              <div class="compare-vs">VS</div>
+              <div class="field">
+                <label>Post B</label>
+                <select id="compareB"></select>
+              </div>
+              <button class="text-button" id="runCompare">Compare →</button>
+            </div>
+
+            <div class="compare-result hidden" id="compareResult">
+              <div class="compare-cols">
+                <div class="compare-col" id="compareColA"></div>
+                <div class="compare-col" id="compareColB"></div>
+              </div>
+              <div class="compare-learnings" id="compareLearnings"></div>
+            </div>
+
+            <div class="compare-empty" id="compareEmpty">
+              <p>Add posts in <strong>Insights</strong> then select two to compare.</p>
+            </div>
+          </div>
+
         </main>
       </div>
     </div>
 
-    <script src="{{ url_for('static', filename='app.js', v='quickdark1') }}"></script>
+    <script src="{{ url_for('static', filename='app.js', v='v3') }}"></script>
   </body>
 </html>

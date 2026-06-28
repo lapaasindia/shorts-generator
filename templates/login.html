@@ -3,47 +3,259 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Team Login</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='quickdark1') }}">
+    <title>{% if mode == 'register' %}Create Account{% else %}Sign In{% endif %} · Shorts Console</title>
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#07080a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Shorts">
-    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    <style>
+      :root {
+        --bg:#07080a;--panel:#111215;--panel-strong:#17181c;--line:#27292f;
+        --line-soft:#1b1d22;--text:#f5f5f2;--muted:#8e929c;--muted-strong:#b8bbc2;
+        --white:#ffffff;--black:#090909;--accent:#d6ff45;--coral:#ff6b5e;--teal:#55d5c9;--gold:#e2bd52;
+      }
+      *{box-sizing:border-box;margin:0;padding:0;}
+      body{min-height:100vh;background:var(--bg);color:var(--text);
+        font-family:"Avenir Next","Gill Sans","Trebuchet MS",sans-serif;
+        display:grid;grid-template-columns:1fr 1fr;}
+
+      /* ── Hero ── */
+      .hero{position:relative;overflow:hidden;background:#0a0b0d;display:flex;
+        flex-direction:column;justify-content:space-between;padding:48px 52px;
+        border-right:1px solid var(--line-soft);}
+      .hero-glow{position:absolute;inset:0;pointer-events:none;}
+      .hero-glow::before{content:"";position:absolute;top:-120px;left:-80px;width:520px;height:520px;
+        background:radial-gradient(circle,rgba(214,255,69,.13) 0%,transparent 70%);border-radius:50%;}
+      .hero-glow::after{content:"";position:absolute;bottom:-80px;right:-60px;width:360px;height:360px;
+        background:radial-gradient(circle,rgba(85,213,201,.09) 0%,transparent 70%);border-radius:50%;}
+      .hero-brand{position:relative;z-index:1;font-family:"Iowan Old Style",Georgia,serif;
+        font-size:32px;font-style:italic;font-weight:900;color:var(--white);text-decoration:none;}
+      .hero-brand span{color:var(--accent);}
+      .hero-body{position:relative;z-index:1;}
+      .hero-kicker{display:inline-flex;align-items:center;gap:8px;padding:5px 12px;
+        border:1px solid rgba(214,255,69,.25);border-radius:99px;background:rgba(214,255,69,.07);
+        color:var(--accent);font-size:11px;font-weight:900;text-transform:uppercase;
+        letter-spacing:.08em;margin-bottom:24px;}
+      .hero-kicker::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent);
+        box-shadow:0 0 8px var(--accent);animation:pulse 2s infinite;}
+      @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+      .hero-title{font-family:"Iowan Old Style",Georgia,serif;font-size:46px;font-style:italic;
+        font-weight:900;line-height:1.1;margin-bottom:20px;color:var(--white);}
+      .hero-title span{color:var(--accent);}
+      .hero-sub{font-size:14px;line-height:1.65;color:var(--muted-strong);max-width:380px;margin-bottom:40px;}
+      .hero-features{display:grid;gap:14px;}
+      .hero-feat{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--muted-strong);}
+      .feat-dot{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;
+        background:rgba(214,255,69,.1);color:var(--accent);font-size:14px;flex-shrink:0;}
+      .hero-footer{position:relative;z-index:1;font-size:11px;color:#3a3d45;}
+
+      /* ── Form panel ── */
+      .form-panel{display:flex;flex-direction:column;justify-content:center;align-items:center;
+        padding:48px 40px;background:var(--bg);}
+      .form-box{width:100%;max-width:400px;}
+      .form-heading{margin-bottom:28px;}
+      .form-kicker{display:block;margin-bottom:8px;color:var(--accent);font-size:10px;
+        font-weight:900;text-transform:uppercase;letter-spacing:.1em;}
+      .form-title{font-family:"Iowan Old Style",Georgia,serif;font-size:28px;font-style:italic;
+        font-weight:900;color:var(--white);line-height:1.2;margin-bottom:6px;}
+      .form-desc{font-size:13px;color:var(--muted);line-height:1.5;}
+
+      .form-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+        padding:28px;display:grid;gap:16px;box-shadow:0 24px 80px rgba(0,0,0,.45);}
+
+      .field{display:grid;gap:6px;}
+      .field label{font-size:10px;font-weight:900;text-transform:uppercase;
+        letter-spacing:.07em;color:var(--muted);}
+      .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+      .input-wrap{position:relative;}
+      .input-icon{position:absolute;top:50%;left:13px;transform:translateY(-50%);
+        color:var(--muted);font-size:14px;pointer-events:none;user-select:none;}
+      .field input[type=text],.field input[type=password],.field input[type=email]{
+        width:100%;height:46px;padding:0 14px 0 40px;border:1px solid var(--line);
+        border-radius:8px;background:var(--panel-strong);color:var(--text);font:inherit;
+        font-size:14px;transition:border-color 160ms,box-shadow 160ms;outline:none;}
+      .field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(214,255,69,.12);}
+      .field input::placeholder{color:#50535d;}
+
+      .remember-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+      .remember-label{display:flex;align-items:center;gap:8px;font-size:12px;
+        color:var(--muted-strong);cursor:pointer;user-select:none;}
+      .remember-label input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;}
+
+      .submit-btn{width:100%;height:50px;display:flex;align-items:center;justify-content:center;
+        gap:10px;border:none;border-radius:8px;background:var(--accent);color:var(--black);
+        font:inherit;font-size:14px;font-weight:900;cursor:pointer;letter-spacing:.02em;
+        transition:opacity 160ms,transform 80ms;}
+      .submit-btn:hover{opacity:.9;}
+      .submit-btn:active{transform:scale(.99);}
+      .submit-btn:disabled{opacity:.55;cursor:wait;}
+      .btn-arr{font-size:18px;line-height:1;}
+
+      .divider{display:flex;align-items:center;gap:12px;font-size:11px;color:#3a3d45;font-weight:700;}
+      .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line);}
+
+      .alt-link{text-align:center;font-size:13px;color:var(--muted);}
+      .alt-link a{color:var(--accent);font-weight:800;text-decoration:none;}
+      .alt-link a:hover{text-decoration:underline;}
+
+      .error-box{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;
+        border:1px solid rgba(255,107,94,.3);border-radius:8px;background:rgba(255,107,94,.06);
+        color:var(--coral);font-size:12px;font-weight:700;line-height:1.45;}
+      .error-box::before{content:"⚠";flex-shrink:0;font-size:14px;}
+
+      .pw-strength{display:grid;gap:5px;margin-top:-6px;}
+      .strength-bars{display:flex;gap:4px;}
+      .sbar{flex:1;height:3px;border-radius:99px;background:var(--line);transition:background 240ms;}
+      .sbar.weak{background:var(--coral);}
+      .sbar.fair{background:var(--gold);}
+      .sbar.good{background:var(--teal);}
+      .sbar.strong{background:var(--accent);}
+      .slabel{font-size:10px;font-weight:800;color:var(--muted);}
+
+      @media(max-width:860px){body{grid-template-columns:1fr;}.hero{display:none;}
+        .form-panel{padding:32px 20px;min-height:100vh;}}
+    </style>
   </head>
   <body>
-    <main class="login-shell">
-      <section class="login-panel">
-        <p class="kicker">AI YouTube Shorts Generator</p>
-        <h1>Team Login</h1>
-        <form method="post" class="login-form">
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-glow"></div>
+      <a class="hero-brand" href="/">shorts<span>//</span>console</a>
+      <div class="hero-body">
+        <div class="hero-kicker">AI-Powered Studio</div>
+        <h1 class="hero-title">Turn long videos<br>into viral <span>shorts</span></h1>
+        <p class="hero-sub">The all-in-one AI workspace for creating, publishing, and learning from your short-form content.</p>
+        <div class="hero-features">
+          <div class="hero-feat"><div class="feat-dot">✂</div><span>Auto-clip the best moments from any video</span></div>
+          <div class="hero-feat"><div class="feat-dot">⊞</div><span>32 beautiful reel templates — one click</span></div>
+          <div class="hero-feat"><div class="feat-dot">◈</div><span>Connect YouTube, Instagram &amp; Facebook</span></div>
+          <div class="hero-feat"><div class="feat-dot">≋</div><span>AI learns why posts go viral or flop</span></div>
+        </div>
+      </div>
+      <div class="hero-footer">© 2026 Shorts Console · AI YouTube Shorts Generator</div>
+    </div>
+
+    <!-- Form -->
+    <div class="form-panel">
+      <div class="form-box">
+
+        {% if mode == 'register' %}
+        <div class="form-heading">
+          <span class="form-kicker">{% if not users_exist %}First-time setup{% else %}New account{% endif %}</span>
+          <h1 class="form-title">Create your account</h1>
+          <p class="form-desc">Set up your Shorts Console workspace to get started.</p>
+        </div>
+        <form class="form-card" method="post" action="/register" autocomplete="off">
+          {% if error %}<div class="error-box">{{ error }}</div>{% endif %}
+          <div class="field">
+            <label for="display">Display name</label>
+            <div class="input-wrap">
+              <span class="input-icon">☺</span>
+              <input id="display" name="display" type="text" placeholder="Your name" autocomplete="name" required>
+            </div>
+          </div>
           <div class="field">
             <label for="username">Username</label>
-            <input id="username" name="username" type="text" value="team" autocomplete="username" required>
+            <div class="input-wrap">
+              <span class="input-icon">@</span>
+              <input id="username" name="username" type="text" placeholder="lowercase, no spaces"
+                     autocomplete="username" pattern="[a-z0-9_]+" minlength="3" required>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="password">Password</label>
+              <div class="input-wrap">
+                <span class="input-icon">⬤</span>
+                <input id="password" name="password" type="password" placeholder="Min. 6 chars"
+                       autocomplete="new-password" minlength="6" oninput="checkPw(this.value)" required>
+              </div>
+            </div>
+            <div class="field">
+              <label for="confirm">Confirm</label>
+              <div class="input-wrap">
+                <span class="input-icon">⬤</span>
+                <input id="confirm" name="confirm" type="password" placeholder="Repeat" autocomplete="new-password" required>
+              </div>
+            </div>
+          </div>
+          <div class="pw-strength" id="pwStrength" style="display:none">
+            <div class="strength-bars">
+              <div class="sbar" id="s1"></div><div class="sbar" id="s2"></div>
+              <div class="sbar" id="s3"></div><div class="sbar" id="s4"></div>
+            </div>
+            <span class="slabel" id="sLabel"></span>
+          </div>
+          <button class="submit-btn" type="submit">
+            Create account <span class="btn-arr">→</span>
+          </button>
+          <div class="alt-link">Already have an account? <a href="/login">Sign in</a></div>
+        </form>
+
+        {% else %}
+        <div class="form-heading">
+          <span class="form-kicker">Welcome back</span>
+          <h1 class="form-title">Sign in to<br>Shorts Console</h1>
+          <p class="form-desc">Enter your credentials to access your workspace.</p>
+        </div>
+        <form class="form-card" method="post"
+              action="/login{% if request.args.get('next') %}?next={{ request.args.get('next')|urlencode }}{% endif %}"
+              autocomplete="on">
+          {% if error %}<div class="error-box">{{ error }}</div>{% endif %}
+          <div class="field">
+            <label for="username">Username</label>
+            <div class="input-wrap">
+              <span class="input-icon">@</span>
+              <input id="username" name="username" type="text" placeholder="your username"
+                     autocomplete="username" autofocus required>
+            </div>
           </div>
           <div class="field">
             <label for="password">Password</label>
-            <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+            <div class="input-wrap">
+              <span class="input-icon">⬤</span>
+              <input id="password" name="password" type="password" placeholder="••••••••"
+                     autocomplete="current-password" required>
+            </div>
           </div>
-          {% if error %}
-            <p class="form-error">{{ error }}</p>
-          {% endif %}
-          <button class="run-button" type="submit">
-            <span class="run-icon" aria-hidden="true"></span>
-            Sign In
+          <div class="remember-row">
+            <label class="remember-label">
+              <input type="checkbox" name="remember" value="1">
+              Stay signed in for 30 days
+            </label>
+          </div>
+          <button class="submit-btn" type="submit">
+            Sign in <span class="btn-arr">→</span>
           </button>
+          <div class="divider">or</div>
+          <div class="alt-link">New here? <a href="/register">Create an account</a></div>
         </form>
-      </section>
-    </main>
+        {% endif %}
+
+      </div>
+    </div>
+
     <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then((reg) => console.log('[Service Worker] Registered successfully from Login with scope:', reg.scope))
-            .catch((err) => console.error('[Service Worker] Registration failed:', err));
-        });
+      function checkPw(pw) {
+        const wrap = document.getElementById('pwStrength');
+        const bars = ['s1','s2','s3','s4'].map(id => document.getElementById(id));
+        const lbl = document.getElementById('sLabel');
+        if (!pw) { wrap.style.display = 'none'; return; }
+        wrap.style.display = 'grid';
+        let score = 0;
+        if (pw.length >= 6) score++;
+        if (pw.length >= 10) score++;
+        if (/[A-Z]/.test(pw) || /[0-9]/.test(pw)) score++;
+        if (/[^a-zA-Z0-9]/.test(pw) || pw.length >= 14) score++;
+        const cls = ['weak','fair','good','strong'][score-1] || 'weak';
+        const labels = ['Weak','Fair','Good','Strong'];
+        bars.forEach((b,i) => { b.className = 'sbar' + (i < score ? ' '+cls : ''); });
+        lbl.textContent = (labels[score-1] || 'Weak') + ' password';
+        lbl.style.color = score >= 3 ? 'var(--teal)' : score === 2 ? 'var(--gold)' : 'var(--coral)';
       }
+      document.querySelector('form')?.addEventListener('submit', function() {
+        const btn = this.querySelector('.submit-btn');
+        if (btn) { btn.disabled = true; btn.innerHTML = 'Please wait…'; }
+      });
     </script>
   </body>
 </html>

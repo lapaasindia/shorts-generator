@@ -1,9 +1,11 @@
 """Web UI for AI YouTube Shorts Generator."""
+import hashlib
 import hmac
 import io
 import json
 import os
 import re
+import secrets
 import threading
 import traceback
 import uuid
@@ -13,6 +15,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Dict, Optional
 
+from dotenv import load_dotenv
 from flask import (
     Flask,
     jsonify,
@@ -26,6 +29,9 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 
+# Load .env before anything else
+load_dotenv(Path(__file__).resolve().parent / ".env")
+
 import shorts_generator.config as generator_config
 from shorts_generator import generate_shorts
 from shorts_generator.local.templates import list_templates, normalize_template_ids
@@ -33,50 +39,91 @@ from shorts_generator.local.templates import list_templates, normalize_template_
 
 BASE_DIR = Path(__file__).resolve().parent
 WEB_OUTPUT_DIR = Path(os.getenv("WEB_OUTPUT_DIR", BASE_DIR / "web_output")).resolve()
+USERS_FILE = BASE_DIR / "users.json"
 UPLOAD_EXTENSIONS = {
-    ".mp4",
-    ".mov",
-    ".m4v",
-    ".mkv",
-    ".webm",
-    ".avi",
-    ".mp3",
-    ".wav",
-    ".m4a",
-    ".aac",
+    ".mp4", ".mov", ".m4v", ".mkv", ".webm", ".avi",
+    ".mp3", ".wav", ".m4a", ".aac",
 }
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", os.urandom(32))
+app.secret_key = os.getenv("SECRET_KEY") or secrets.token_hex(32)
 app.config.update(
     MAX_CONTENT_LENGTH=int(os.getenv("WEB_MAX_UPLOAD_MB", "2048")) * 1024 * 1024,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=os.getenv("COOKIE_SECURE", "false").strip().lower() == "true",
+    PERMANENT_SESSION_LIFETIME=86400 * 30,  # 30 days
 )
-
-WEB_AUTH_USERNAME = os.getenv("WEB_AUTH_USERNAME", "team")
-WEB_AUTH_PASSWORD = os.getenv("WEB_AUTH_PASSWORD", "").strip()
-SECRET_KEY_CONFIGURED = bool(os.getenv("SECRET_KEY", "").strip())
 
 jobs: Dict[str, Dict] = {}
 jobs_lock = threading.Lock()
 
+# ── User account helpers ──────────────────────────────────────────────────────
+
+def _hash_password(password: str, salt: str = "") -> str:
+    if not salt:
+        salt = secrets.token_hex(16)
+    hashed = hashlib.sha256((salt + password).encode()).hexdigest()
+    return f"{salt}:{hashed}"
+
+def _verify_password(password: str, stored: str) -> bool:
+    try:
+        salt, hashed = stored.split(":", 1)
+        return hmac.compare_digest(
+            hashlib.sha256((salt + password).encode()).hexdigest(),
+            hashed,
+        )
+    except Exception:
+        return False
+
+def _load_users() -> Dict:
+    if USERS_FILE.exists():
+        try:
+            return json.loads(USERS_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+def _save_users(users: Dict) -> None:
+    USERS_FILE.write_text(json.dumps(users, indent=2), encoding="utf-8")
+
+def _users_exist() -> bool:
+    return bool(_load_users())
+
+def _migrate_env_user() -> None:
+    """On first run, migrate WEB_AUTH_USERNAME/PASSWORD into users.json."""
+    env_user = os.getenv("WEB_AUTH_USERNAME", "").strip()
+    env_pass = os.getenv("WEB_AUTH_PASSWORD", "").strip()
+    if env_user and env_pass and not _users_exist():
+        users = {env_user: {"password": _hash_password(env_pass), "created_at": _utc_now(), "role": "admin"}}
+        _save_users(users)
+        print(f"[auth] Migrated env user '{env_user}' into users.json", flush=True)
+
+# ── Auth helpers ──────────────────────────────────────────────────────────────
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
+def _is_authenticated() -> bool:
+    return bool(session.get("user"))
 
-def _auth_enabled() -> bool:
-    return bool(WEB_AUTH_PASSWORD)
+def _current_user() -> Optional[str]:
+    return session.get("user")
 
+def login_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not _users_exist():
+            return redirect(url_for("register"))
+        if _is_authenticated():
+            return view(*args, **kwargs)
+        return redirect(url_for("login", next=request.path))
+    return wrapped
 
-def _startup_warnings() -> list[str]:
+# ── Startup ───────────────────────────────────────────────────────────────────
+
+def _startup_warnings() -> list:
     warnings = []
-    if not _auth_enabled():
-        warnings.append("WEB_AUTH_PASSWORD is not set; the web app is open to anyone who can reach it.")
-    if _auth_enabled() and not SECRET_KEY_CONFIGURED:
-        warnings.append("SECRET_KEY is not set; sessions will reset when the process restarts.")
     if generator_config.TRANSCRIBER_PROVIDER == "sarvam" and not generator_config.SARVAM_API_KEY:
         warnings.append("SARVAM_API_KEY is not set; Sarvam transcription jobs will fail.")
     if generator_config.LLM_PROVIDER == "openai" and not generator_config.OPENAI_API_KEY:
@@ -85,26 +132,19 @@ def _startup_warnings() -> list[str]:
         warnings.append("LLM_PROVIDER=gemini but GEMINI_API_KEY is not set.")
     return warnings
 
-
+_migrate_env_user()
 STARTUP_WARNINGS = _startup_warnings()
-for warning in STARTUP_WARNINGS:
-    print(f"[web/startup] WARNING: {warning}", flush=True)
+for _w in STARTUP_WARNINGS:
+    print(f"[web/startup] WARNING: {_w}", flush=True)
 
 
-def _is_authenticated() -> bool:
-    if not _auth_enabled():
-        return True
-    return bool(session.get("authenticated"))
-
-
-def login_required(view):
-    @wraps(view)
-    def wrapped(*args, **kwargs):
-        if _is_authenticated():
-            return view(*args, **kwargs)
-        return redirect(url_for("login", next=request.path))
-
-    return wrapped
+@app.after_request
+def _no_cache_html(response):
+    if "text/html" in response.content_type:
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
 
 
 def _job_dir(job_id: str) -> Path:
@@ -370,42 +410,107 @@ def healthz():
 @app.get("/api/status")
 @login_required
 def app_status():
-    return jsonify(
-        {
-            "status": "ok",
-            "warnings": STARTUP_WARNINGS,
-            "transcriber_provider": generator_config.TRANSCRIBER_PROVIDER,
-            "llm_provider": generator_config.LLM_PROVIDER,
-            "web_output_dir": str(WEB_OUTPUT_DIR),
-            "template_count": len(list_templates()),
-        }
-    )
+    return jsonify({
+        "status": "ok",
+        "warnings": STARTUP_WARNINGS,
+        "transcriber_provider": generator_config.TRANSCRIBER_PROVIDER,
+        "llm_provider": generator_config.LLM_PROVIDER,
+        "web_output_dir": str(WEB_OUTPUT_DIR),
+        "template_count": len(list_templates()),
+        "user": _current_user(),
+    })
+
+
+@app.get("/api/me")
+@login_required
+def me():
+    users = _load_users()
+    user = users.get(_current_user() or "", {})
+    return jsonify({
+        "username": _current_user(),
+        "display": session.get("display"),
+        "role": user.get("role", "member"),
+        "created_at": user.get("created_at"),
+    })
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    # Only allow registration if NO users exist yet (first-time setup)
+    if _users_exist() and not _is_authenticated():
+        return redirect(url_for("login"))
+
+    error = None
+    success = None
+
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip().lower()
+        password = request.form.get("password") or ""
+        confirm  = request.form.get("confirm") or ""
+        display  = (request.form.get("display") or username).strip()
+
+        if not username or len(username) < 3:
+            error = "Username must be at least 3 characters."
+        elif not re.match(r'^[a-z0-9_]+$', username):
+            error = "Username may only contain letters, numbers and underscores."
+        elif len(password) < 6:
+            error = "Password must be at least 6 characters."
+        elif password != confirm:
+            error = "Passwords do not match."
+        else:
+            users = _load_users()
+            if username in users:
+                error = "Username already taken."
+            else:
+                users[username] = {
+                    "password": _hash_password(password),
+                    "display": display,
+                    "created_at": _utc_now(),
+                    "role": "admin" if not users else "member",
+                }
+                _save_users(users)
+                session.clear()
+                session.permanent = True
+                session["user"] = username
+                session["display"] = display
+                return redirect(url_for("index"))
+
+    return render_template("login.html", mode="register", error=error, success=success)
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if not _auth_enabled():
+    if not _users_exist():
+        return redirect(url_for("register"))
+    if _is_authenticated():
         return redirect(url_for("index"))
 
     error = None
     if request.method == "POST":
-        username = (request.form.get("username") or "").strip()
+        username = (request.form.get("username") or "").strip().lower()
         password = request.form.get("password") or ""
-        username_ok = hmac.compare_digest(username, WEB_AUTH_USERNAME)
-        password_ok = hmac.compare_digest(password, WEB_AUTH_PASSWORD)
-        if username_ok and password_ok:
+        remember = bool(request.form.get("remember"))
+        users = _load_users()
+        user = users.get(username)
+        if user and _verify_password(password, user["password"]):
             session.clear()
-            session["authenticated"] = True
-            return redirect(request.args.get("next") or url_for("index"))
-        error = "Invalid login."
+            session.permanent = remember
+            session["user"] = username
+            session["display"] = user.get("display", username)
+            next_url = request.args.get("next") or url_for("index")
+            # Prevent open redirect
+            if not next_url.startswith("/"):
+                next_url = url_for("index")
+            return redirect(next_url)
+        error = "Incorrect username or password."
 
-    return render_template("login.html", error=error)
+    return render_template("login.html", mode="login", error=error)
 
 
 @app.post("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("login" if _auth_enabled() else "index"))
+    return redirect(url_for("login"))
 
 
 @app.get("/")
@@ -413,7 +518,9 @@ def logout():
 def index():
     return render_template(
         "index.html",
-        auth_enabled=_auth_enabled(),
+        auth_enabled=True,
+        current_user=_current_user(),
+        display_name=session.get("display", _current_user()),
         reel_templates=list_templates(),
     )
 
@@ -532,6 +639,213 @@ def get_job(job_id: str):
 def media(job_id: str, filename: str):
     job_dir = _job_dir(job_id).resolve()
     return send_from_directory(job_dir, filename, as_attachment=False)
+
+
+SOCIAL_CONNECTIONS_FILE = BASE_DIR / "social_connections.json"
+POST_ANALYTICS_FILE = BASE_DIR / "post_analytics.json"
+
+
+def _load_social_connections() -> Dict:
+    if SOCIAL_CONNECTIONS_FILE.exists():
+        try:
+            return json.loads(SOCIAL_CONNECTIONS_FILE.read_text())
+        except Exception:
+            pass
+    return {"youtube": None, "instagram": None, "facebook": None}
+
+
+def _save_social_connections(data: Dict) -> None:
+    SOCIAL_CONNECTIONS_FILE.write_text(json.dumps(data, indent=2))
+
+
+def _load_post_analytics() -> list:
+    if POST_ANALYTICS_FILE.exists():
+        try:
+            return json.loads(POST_ANALYTICS_FILE.read_text())
+        except Exception:
+            pass
+    return []
+
+
+def _save_post_analytics(data: list) -> None:
+    POST_ANALYTICS_FILE.write_text(json.dumps(data, indent=2))
+
+
+def _analyze_post_performance(post: Dict) -> Dict:
+    views = post.get("views", 0)
+    likes = post.get("likes", 0)
+    comments = post.get("comments", 0)
+    shares = post.get("shares", 0)
+    score = post.get("score", 0)
+
+    total_engagement = likes + comments * 2 + shares * 3
+    engagement_rate = round((total_engagement / max(views, 1)) * 100, 2)
+
+    learnings = []
+    flags = []
+
+    if views >= 100000:
+        learnings.append("Strong hook in first 3 seconds drove high click-through.")
+        learnings.append("Title contains emotional trigger word (surprise/shock/transformation).")
+        learnings.append("Optimal length 30-60s maximized watch completion rate.")
+        learnings.append("Trending audio or sound used — boosted algorithmic distribution.")
+    elif views >= 10000:
+        learnings.append("Solid mid-tier performance — good hook but caption could be stronger.")
+        learnings.append("Engagement ratio healthy; resharing potential present.")
+    else:
+        flags.append("Low view count — possible weak hook or poor first frame thumbnail.")
+        flags.append("Check if caption includes call-to-action or question to drive comments.")
+        flags.append("Consider reposting with A/B tested thumbnail or different caption angle.")
+        flags.append("Audio trend relevance may be low — try pairing with viral sound.")
+
+    if engagement_rate >= 8:
+        learnings.append(f"Exceptional engagement rate {engagement_rate}% — content resonated deeply with audience.")
+    elif engagement_rate >= 3:
+        learnings.append(f"Healthy engagement rate {engagement_rate}% — audience connected with topic.")
+    else:
+        flags.append(f"Low engagement rate {engagement_rate}% — content may not be evoking a reaction.")
+
+    if shares >= views * 0.02:
+        learnings.append("High share rate signals content is 'identity-shareable' — viewers want others to see this.")
+
+    virality_score = min(100, int(
+        (min(views, 1000000) / 10000) * 0.5 +
+        engagement_rate * 3 +
+        (shares / max(views, 1)) * 200
+    ))
+
+    return {
+        "engagement_rate": engagement_rate,
+        "virality_score": virality_score,
+        "learnings": learnings,
+        "flags": flags,
+        "verdict": "viral" if views >= 100000 else ("growing" if views >= 10000 else "underperforming"),
+    }
+
+
+@app.get("/api/social/connections")
+@login_required
+def get_social_connections():
+    return jsonify(_load_social_connections())
+
+
+@app.post("/api/social/connect")
+@login_required
+def connect_social():
+    data = request.get_json(silent=True) or {}
+    platform = data.get("platform")
+    handle = (data.get("handle") or "").strip()
+    if platform not in ("youtube", "instagram", "facebook"):
+        return jsonify({"error": "Unknown platform"}), 400
+    connections = _load_social_connections()
+    connections[platform] = {
+        "handle": handle,
+        "connected_at": _utc_now(),
+        "status": "connected",
+    }
+    _save_social_connections(connections)
+    return jsonify({"ok": True, "connections": connections})
+
+
+@app.post("/api/social/disconnect")
+@login_required
+def disconnect_social():
+    data = request.get_json(silent=True) or {}
+    platform = data.get("platform")
+    if platform not in ("youtube", "instagram", "facebook"):
+        return jsonify({"error": "Unknown platform"}), 400
+    connections = _load_social_connections()
+    connections[platform] = None
+    _save_social_connections(connections)
+    return jsonify({"ok": True, "connections": connections})
+
+
+@app.get("/api/analytics/posts")
+@login_required
+def get_analytics_posts():
+    return jsonify({"posts": _load_post_analytics()})
+
+
+@app.post("/api/analytics/posts")
+@login_required
+def add_analytics_post():
+    data = request.get_json(silent=True) or {}
+    posts = _load_post_analytics()
+    post = {
+        "id": uuid.uuid4().hex[:8],
+        "title": (data.get("title") or "Untitled post")[:120],
+        "platform": data.get("platform", "youtube"),
+        "posted_at": data.get("posted_at") or _utc_now(),
+        "views": max(0, int(data.get("views") or 0)),
+        "likes": max(0, int(data.get("likes") or 0)),
+        "comments": max(0, int(data.get("comments") or 0)),
+        "shares": max(0, int(data.get("shares") or 0)),
+        "score": max(0, int(data.get("score") or 0)),
+        "template": data.get("template") or "",
+        "thumbnail": data.get("thumbnail") or "",
+        "notes": (data.get("notes") or "")[:500],
+    }
+    post["analysis"] = _analyze_post_performance(post)
+    posts.insert(0, post)
+    _save_post_analytics(posts)
+    return jsonify({"ok": True, "post": post})
+
+
+@app.delete("/api/analytics/posts/<post_id>")
+@login_required
+def delete_analytics_post(post_id: str):
+    posts = _load_post_analytics()
+    posts = [p for p in posts if p.get("id") != post_id]
+    _save_post_analytics(posts)
+    return jsonify({"ok": True})
+
+
+@app.get("/api/analytics/compare")
+@login_required
+def compare_posts():
+    id_a = request.args.get("a")
+    id_b = request.args.get("b")
+    posts = {p["id"]: p for p in _load_post_analytics()}
+    post_a = posts.get(id_a)
+    post_b = posts.get(id_b)
+    if not post_a or not post_b:
+        return jsonify({"error": "One or both posts not found"}), 404
+    return jsonify({
+        "a": post_a,
+        "b": post_b,
+        "analysis_a": _analyze_post_performance(post_a),
+        "analysis_b": _analyze_post_performance(post_b),
+    })
+
+
+@app.get("/api/calendar")
+@login_required
+def get_calendar():
+    posts = _load_post_analytics()
+    with jobs_lock:
+        job_list = list(jobs.values())
+    events = []
+    for post in posts:
+        events.append({
+            "id": post["id"],
+            "type": "post",
+            "title": post["title"],
+            "date": post.get("posted_at", "")[:10],
+            "platform": post.get("platform", ""),
+            "views": post.get("views", 0),
+            "verdict": (post.get("analysis") or {}).get("verdict", ""),
+        })
+    for job in job_list:
+        date_str = (job.get("completed_at") or job.get("created_at") or "")[:10]
+        if date_str:
+            events.append({
+                "id": job["id"],
+                "type": "render",
+                "title": job.get("source_label") or "Render job",
+                "date": date_str,
+                "status": job.get("status"),
+            })
+    return jsonify({"events": events})
 
 
 if __name__ == "__main__":
