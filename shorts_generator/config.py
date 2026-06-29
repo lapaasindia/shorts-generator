@@ -1,23 +1,62 @@
+import json
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-MUAPI_API_KEY = os.getenv("MUAPI_API_KEY", "").strip()
+BASE_DIR = Path(__file__).resolve().parents[1]
+
+
+def _settings_file() -> Path:
+    configured = os.getenv("APP_SETTINGS_FILE", "").strip()
+    if configured:
+        return Path(configured).expanduser()
+    return Path(os.getenv("DATA_DIR", BASE_DIR)).expanduser() / "app_settings.json"
+
+
+def _load_app_settings() -> dict:
+    try:
+        return json.loads(_settings_file().read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+_APP_SETTINGS = _load_app_settings()
+
+
+def _setting(name: str, default: str = "") -> str:
+    saved = str(_APP_SETTINGS.get(name, "") or "").strip()
+    if saved:
+        return saved
+    return os.getenv(name, default).strip()
+
+
+def reload_app_settings() -> None:
+    """Refresh dynamic settings saved from the web status page."""
+    global _APP_SETTINGS
+    global MUAPI_API_KEY, TRANSCRIBER_PROVIDER, OPENAI_API_KEY, GEMINI_API_KEY
+    global LLM_PROVIDER, SARVAM_API_KEY, WEB_PIPELINE_MODE
+
+    _APP_SETTINGS = _load_app_settings()
+    MUAPI_API_KEY = _setting("MUAPI_API_KEY")
+    TRANSCRIBER_PROVIDER = _setting("TRANSCRIBER_PROVIDER", "whisper").lower()
+    OPENAI_API_KEY = _setting("OPENAI_API_KEY")
+    GEMINI_API_KEY = _setting("GEMINI_API_KEY")
+    LLM_PROVIDER = _setting("LLM_PROVIDER", "openai").lower()
+    SARVAM_API_KEY = _setting("SARVAM_API_KEY")
+    WEB_PIPELINE_MODE = _setting("WEB_PIPELINE_MODE", "local").lower()
+
+
 MUAPI_BASE_URL = os.getenv("MUAPI_BASE_URL", "https://api.muapi.ai/api/v1").rstrip("/")
 
 POLL_INTERVAL_SECONDS = float(os.getenv("MUAPI_POLL_INTERVAL", "5"))
 POLL_TIMEOUT_SECONDS = float(os.getenv("MUAPI_POLL_TIMEOUT", "600"))
 
 # Local-mode (--mode local) settings — only consulted when running offline.
-TRANSCRIBER_PROVIDER = os.getenv("TRANSCRIBER_PROVIDER", "whisper").strip().lower()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").strip().lower()
-SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "").strip()
 SARVAM_BASE_URL = os.getenv("SARVAM_BASE_URL", "https://api.sarvam.ai").rstrip("/")
 SARVAM_STT_MODEL = os.getenv("SARVAM_STT_MODEL", "saaras:v3")
 SARVAM_STT_MODE = os.getenv("SARVAM_STT_MODE", "transcribe")
@@ -30,7 +69,7 @@ LOCAL_OUTPUT_DIR = os.getenv("LOCAL_OUTPUT_DIR", "output")
 # Web app jobs default to local rendering so templates/upscaling keep working.
 # Set WEB_PIPELINE_MODE=api to route YouTube links through MuAPI instead of
 # yt-dlp when hosted IPs hit YouTube bot checks.
-WEB_PIPELINE_MODE = os.getenv("WEB_PIPELINE_MODE", "local").strip().lower()
+reload_app_settings()
 
 # VAD (Voice Activity Detection) settings for faster-whisper
 # Default threshold is 0.5; lower = more sensitive, higher = less sensitive

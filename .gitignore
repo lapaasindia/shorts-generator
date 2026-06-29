@@ -13,6 +13,9 @@ work/
 social_connections.json
 scheduled_posts.json
 users.json
+post_analytics.json
+app_settings.json
+youtube_cookies.txt
 
 # Persistent data volume directory containing whisper models
 data/

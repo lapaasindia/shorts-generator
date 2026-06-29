@@ -46,6 +46,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 WEB_OUTPUT_DIR = Path(os.getenv("WEB_OUTPUT_DIR", DATA_DIR / "web_output")).resolve()
 USERS_FILE = DATA_DIR / "users.json"
 YOUTUBE_COOKIE_FILE = Path(os.getenv("YTDLP_COOKIE_FILE") or DATA_DIR / "youtube_cookies.txt").resolve()
+APP_SETTINGS_FILE = Path(os.getenv("APP_SETTINGS_FILE") or DATA_DIR / "app_settings.json").resolve()
 UPLOAD_EXTENSIONS = {
     ".mp4", ".mov", ".m4v", ".mkv", ".webm", ".avi",
     ".mp3", ".wav", ".m4a", ".aac",
@@ -63,6 +64,7 @@ app.config.update(
 
 jobs: Dict[str, Dict] = {}
 jobs_lock = threading.Lock()
+settings_lock = threading.Lock()
 
 # ── User account helpers ──────────────────────────────────────────────────────
 
@@ -168,6 +170,93 @@ def login_required(view):
             return view(*args, **kwargs)
         return redirect(url_for("login", next=request.path))
     return wrapped
+
+
+# ── Workspace setup settings ─────────────────────────────────────────────────
+
+def _load_app_settings() -> Dict:
+    if APP_SETTINGS_FILE.exists():
+        try:
+            return json.loads(APP_SETTINGS_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+
+def _write_app_settings(settings: Dict) -> None:
+    APP_SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    APP_SETTINGS_FILE.write_text(json.dumps(settings, indent=2), encoding="utf-8")
+    try:
+        APP_SETTINGS_FILE.chmod(0o600)
+    except OSError:
+        pass
+
+
+def _save_app_settings(updates: Dict[str, str]) -> Dict:
+    cleaned = {
+        key: str(value).strip()
+        for key, value in updates.items()
+        if value is not None and str(value).strip()
+    }
+    with settings_lock:
+        settings = _load_app_settings()
+        settings.update(cleaned)
+        _write_app_settings(settings)
+    _refresh_runtime_config()
+    return settings
+
+
+def _has_config_value(name: str) -> bool:
+    return bool(str(getattr(generator_config, name, "") or "").strip())
+
+
+def _refresh_runtime_config() -> None:
+    generator_config.reload_app_settings()
+    try:
+        from shorts_generator.local import llm as local_llm
+
+        local_llm.LLM_PROVIDER = generator_config.LLM_PROVIDER
+    except Exception:
+        pass
+
+    try:
+        from shorts_generator.local import transcriber as local_transcriber
+
+        local_transcriber.TRANSCRIBER_PROVIDER = generator_config.TRANSCRIBER_PROVIDER
+    except Exception:
+        pass
+
+
+def _settings_state() -> Dict:
+    return {
+        "app_settings_file": str(APP_SETTINGS_FILE),
+        "web_pipeline_mode": generator_config.WEB_PIPELINE_MODE,
+        "muapi_key_saved": _has_config_value("MUAPI_API_KEY"),
+        "transcriber_provider": generator_config.TRANSCRIBER_PROVIDER,
+        "sarvam_key_saved": _has_config_value("SARVAM_API_KEY"),
+        "llm_provider": generator_config.LLM_PROVIDER,
+        "openai_key_saved": _has_config_value("OPENAI_API_KEY"),
+        "gemini_key_saved": _has_config_value("GEMINI_API_KEY"),
+    }
+
+
+def _transcriber_status() -> tuple[bool, str]:
+    provider = generator_config.TRANSCRIBER_PROVIDER or "whisper"
+    if provider == "sarvam" and not generator_config.SARVAM_API_KEY:
+        return False, "sarvam needs SARVAM_API_KEY"
+    return True, provider
+
+
+def _ai_status() -> tuple[bool, str]:
+    provider = generator_config.LLM_PROVIDER or "heuristic"
+    if provider == "heuristic":
+        return False, "heuristic (add OpenAI or Gemini for AI ranking)"
+    if provider == "openai" and not generator_config.OPENAI_API_KEY:
+        return False, "openai needs OPENAI_API_KEY"
+    if provider == "gemini" and not generator_config.GEMINI_API_KEY:
+        return False, "gemini needs GEMINI_API_KEY"
+    return True, provider
+
 
 # ── Startup ───────────────────────────────────────────────────────────────────
 
@@ -519,11 +608,17 @@ def upload_too_large(_exc):
 @login_required
 def app_status():
     youtube_status = _youtube_cookie_status()
+    transcriber_ok, transcriber_detail = _transcriber_status()
+    ai_ok, ai_detail = _ai_status()
     return jsonify({
         "status": "ok",
-        "warnings": STARTUP_WARNINGS,
+        "warnings": _startup_warnings(),
         "transcriber_provider": generator_config.TRANSCRIBER_PROVIDER,
+        "transcriber_ready": transcriber_ok,
+        "transcriber_detail": transcriber_detail,
         "llm_provider": generator_config.LLM_PROVIDER,
+        "ai_ready": ai_ok,
+        "ai_detail": ai_detail,
         "web_pipeline_mode": generator_config.WEB_PIPELINE_MODE,
         "youtube_download_ready": youtube_status["ready"],
         "youtube_download_setup_url": url_for("status_page", _anchor="setup-youtube-downloads"),
@@ -540,15 +635,15 @@ def status_page():
     with jobs_lock:
         job_count = len(jobs)
     youtube_status = _youtube_cookie_status()
+    transcriber_ok, transcriber_detail = _transcriber_status()
+    ai_ok, ai_detail = _ai_status()
     checks = [
         ("Web server", True, "Running"),
         ("Templates", len(list_templates()) > 0, f"{len(list_templates())} styles loaded"),
         ("YouTube downloads", youtube_status["ready"],
          "Ready" if youtube_status["ready"] else "Needs cookies or API mode"),
-        ("Transcriber", True, generator_config.TRANSCRIBER_PROVIDER),
-        ("AI highlights", generator_config.LLM_PROVIDER != "heuristic",
-         generator_config.LLM_PROVIDER + (" (set OPENAI_API_KEY/GEMINI_API_KEY for AI)"
-                                          if generator_config.LLM_PROVIDER == "heuristic" else "")),
+        ("Transcriber", transcriber_ok, transcriber_detail),
+        ("AI highlights", ai_ok, ai_detail),
         ("YouTube publishing", social.get("youtube"), "Connected app" if social.get("youtube") else "Not configured"),
         ("Instagram publishing", social.get("instagram"), "Connected app" if social.get("instagram") else "Not configured"),
         ("Facebook publishing", social.get("facebook"), "Connected app" if social.get("facebook") else "Not configured"),
@@ -556,23 +651,23 @@ def status_page():
     return render_template(
         "status.html",
         checks=checks,
-        warnings=STARTUP_WARNINGS,
+        warnings=_startup_warnings(),
         job_count=job_count,
         output_dir=str(WEB_OUTPUT_DIR),
         user=_current_user(),
         is_admin=_current_user_is_admin(),
         youtube_status=youtube_status,
+        settings_state=_settings_state(),
         youtube_message=request.args.get("youtube"),
         youtube_error=request.args.get("youtube_error"),
+        settings_message=request.args.get("settings"),
+        settings_error=request.args.get("settings_error"),
     )
 
 
 @app.post("/settings/youtube-cookies")
 @login_required
 def save_youtube_cookies():
-    if not _current_user_is_admin():
-        return jsonify({"error": "Only workspace admins can update YouTube cookies."}), 403
-
     cookies_text = (request.form.get("cookies_text") or "").strip()
     if not cookies_text:
         return redirect(url_for("status_page", youtube_error="Paste YouTube cookies before saving.", _anchor="setup-youtube-downloads"))
@@ -588,6 +683,112 @@ def save_youtube_cookies():
     except OSError:
         pass
     return redirect(url_for("status_page", youtube="YouTube cookies saved. Try the link again.", _anchor="setup-youtube-downloads"))
+
+
+@app.post("/settings/youtube-api")
+@login_required
+def save_youtube_api_settings():
+    mode = (request.form.get("web_pipeline_mode") or "local").strip().lower()
+    if mode not in {"local", "api", "auto"}:
+        return redirect(url_for(
+            "status_page",
+            settings_error="Choose local, api, or auto for YouTube API mode.",
+            _anchor="setup-youtube-downloads",
+        ))
+
+    muapi_key = (request.form.get("muapi_api_key") or "").strip()
+    if mode in {"api", "auto"} and not (muapi_key or generator_config.MUAPI_API_KEY):
+        return redirect(url_for(
+            "status_page",
+            settings_error="Paste a MuAPI key before enabling API mode.",
+            _anchor="setup-youtube-downloads",
+        ))
+
+    updates = {"WEB_PIPELINE_MODE": mode}
+    if muapi_key:
+        updates["MUAPI_API_KEY"] = muapi_key
+    _save_app_settings(updates)
+    return redirect(url_for(
+        "status_page",
+        settings="YouTube API settings saved. Try the link again.",
+        _anchor="setup-youtube-downloads",
+    ))
+
+
+@app.post("/settings/processing")
+@login_required
+def save_processing_settings():
+    transcriber_submitted = "transcriber_provider" in request.form or "sarvam_api_key" in request.form
+    llm_submitted = "llm_provider" in request.form or "openai_api_key" in request.form or "gemini_api_key" in request.form
+    transcriber_provider = (
+        request.form.get("transcriber_provider")
+        or generator_config.TRANSCRIBER_PROVIDER
+        or "whisper"
+    ).strip().lower()
+    llm_provider = (
+        request.form.get("llm_provider")
+        or generator_config.LLM_PROVIDER
+        or "heuristic"
+    ).strip().lower()
+    if transcriber_submitted and transcriber_provider not in {"whisper", "sarvam"}:
+        return redirect(url_for(
+            "status_page",
+            settings_error="Choose whisper or sarvam for transcription.",
+            _anchor="setup-transcriber",
+        ))
+    if llm_submitted and llm_provider not in {"heuristic", "openai", "gemini"}:
+        return redirect(url_for(
+            "status_page",
+            settings_error="Choose heuristic, openai, or gemini for AI highlights.",
+            _anchor="setup-ai-highlights",
+        ))
+
+    sarvam_key = (request.form.get("sarvam_api_key") or "").strip()
+    openai_key = (request.form.get("openai_api_key") or "").strip()
+    gemini_key = (request.form.get("gemini_api_key") or "").strip()
+
+    if transcriber_submitted and transcriber_provider == "sarvam" and not (sarvam_key or generator_config.SARVAM_API_KEY):
+        return redirect(url_for(
+            "status_page",
+            settings_error="Paste a Sarvam API key before using Sarvam transcription.",
+            _anchor="setup-transcriber",
+        ))
+    if llm_submitted and llm_provider == "openai" and not (openai_key or generator_config.OPENAI_API_KEY):
+        return redirect(url_for(
+            "status_page",
+            settings_error="Paste an OpenAI API key before using OpenAI highlights.",
+            _anchor="setup-ai-highlights",
+        ))
+    if llm_submitted and llm_provider == "gemini" and not (gemini_key or generator_config.GEMINI_API_KEY):
+        return redirect(url_for(
+            "status_page",
+            settings_error="Paste a Gemini API key before using Gemini highlights.",
+            _anchor="setup-ai-highlights",
+        ))
+
+    updates = {}
+    if transcriber_submitted:
+        updates["TRANSCRIBER_PROVIDER"] = transcriber_provider
+    if llm_submitted:
+        updates["LLM_PROVIDER"] = llm_provider
+    if transcriber_submitted and sarvam_key:
+        updates["SARVAM_API_KEY"] = sarvam_key
+    if llm_submitted and openai_key:
+        updates["OPENAI_API_KEY"] = openai_key
+    if llm_submitted and gemini_key:
+        updates["GEMINI_API_KEY"] = gemini_key
+    if not updates:
+        return redirect(url_for(
+            "status_page",
+            settings_error="No setup changes were submitted.",
+            _anchor="setup-ai-highlights",
+        ))
+    _save_app_settings(updates)
+    return redirect(url_for(
+        "status_page",
+        settings="Processing settings saved.",
+        _anchor="setup-ai-highlights",
+    ))
 
 
 @app.get("/api/me")

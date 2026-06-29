@@ -43,7 +43,9 @@
       .tag.ok{background:var(--accent);color:var(--black);}
       .tag.warn{background:rgba(226,189,82,.16);color:var(--gold);border:1px solid rgba(226,189,82,.3);}
       button.tag{font:inherit;cursor:pointer;}
+      button.tag.ok:hover{filter:brightness(.92);}
       .tag.warn:hover{background:rgba(226,189,82,.25);}
+      .hidden{display:none!important;}
       .meta{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
       .meta-item{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;}
       .meta-item span{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:800;}
@@ -56,9 +58,17 @@
       .inline-setup-inner{background:var(--panel-strong);border:1px solid var(--line);border-radius:10px;padding:16px;}
       .inline-setup h2{font-size:14px;margin-bottom:6px;}
       .inline-setup p{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:12px;}
+      .setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+      .setup-field{display:flex;flex-direction:column;gap:6px;}
+      .setup-field label{font-size:10px;color:var(--muted);font-weight:900;text-transform:uppercase;letter-spacing:.05em;}
+      .inline-setup input,.inline-setup select{width:100%;border:1px solid var(--line);
+        border-radius:8px;background:var(--bg);color:var(--text);padding:11px 12px;font-size:13px;}
+      .inline-setup select{appearance:auto;}
       .inline-setup textarea{width:100%;min-height:112px;resize:vertical;border:1px solid var(--line);
         border-radius:8px;background:var(--bg);color:var(--text);padding:12px;font:12px ui-monospace,Menlo,monospace;}
-      .inline-setup textarea:focus{outline:2px solid var(--accent);border-color:var(--accent);}
+      .inline-setup input:focus,.inline-setup select:focus,.inline-setup textarea:focus{outline:2px solid var(--accent);border-color:var(--accent);}
+      .setup-divider{height:1px;background:var(--line);margin:16px 0;}
+      .setup-small-title{font-size:12px;font-weight:900;margin-bottom:6px;}
       .setup-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px;}
       .setup-card h2{font-size:15px;margin-bottom:5px;}
       .setup-card p{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:13px;}
@@ -73,6 +83,7 @@
       .msg{border-radius:8px;padding:10px 12px;font-size:12px;font-weight:800;margin-bottom:12px;}
       .msg.ok{background:rgba(214,255,69,.1);border:1px solid rgba(214,255,69,.25);color:var(--accent);}
       .msg.err{background:rgba(255,107,94,.08);border:1px solid rgba(255,107,94,.25);color:var(--coral);}
+      @media (max-width:640px){.setup-grid{grid-template-columns:1fr}.inline-setup{padding-left:18px}}
     </style>
   </head>
   <body>
@@ -86,32 +97,38 @@
 
       {% set all_ok = checks | selectattr(1) | list | length == checks | length %}
       <div class="overall"><span class="dot"></span>{{ "All systems operational" if all_ok else "Operational · some optional features need setup" }}</div>
+      {% if youtube_message %}<div class="msg ok">{{ youtube_message }}</div>{% endif %}
+      {% if youtube_error %}<div class="msg err">{{ youtube_error }}</div>{% endif %}
+      {% if settings_message %}<div class="msg ok">{{ settings_message }}</div>{% endif %}
+      {% if settings_error %}<div class="msg err">{{ settings_error }}</div>{% endif %}
 
       <div class="card">
         {% for name, ok, detail in checks %}
         {% set setup_id = 'setup-' ~ name|lower|replace(' ', '-') %}
+        {% set configurable = name in ['YouTube downloads', 'Transcriber', 'AI highlights'] %}
         <div class="row">
           <div class="ic {{ 'ok' if ok else 'warn' }}">{{ '✓' if ok else '!' }}</div>
           <div class="row-main">
             <strong>{{ name }}</strong>
             <span>{{ detail }}</span>
           </div>
-          {% if ok %}
+          {% if ok and configurable %}
+          <button class="tag ok" type="button" data-setup-trigger="{{ setup_id }}" aria-controls="{{ setup_id }}" aria-expanded="false">OK</button>
+          {% elif ok %}
           <span class="tag ok">OK</span>
-          {% elif name == 'YouTube downloads' or name == 'AI highlights' or 'publishing' in name %}
+          {% elif configurable or 'publishing' in name %}
           <button class="tag warn" type="button" data-setup-trigger="{{ setup_id }}" aria-controls="{{ setup_id }}" aria-expanded="false">Setup</button>
           {% else %}
           <span class="tag warn">Setup</span>
           {% endif %}
         </div>
-        {% if not ok and name == 'YouTube downloads' %}
+        {% if name == 'YouTube downloads' %}
         <div class="inline-setup hidden" id="{{ setup_id }}" data-setup-panel>
           <div class="inline-setup-inner">
             <h2>YouTube download setup</h2>
             {% if youtube_message %}<div class="msg ok">{{ youtube_message }}</div>{% endif %}
             {% if youtube_error %}<div class="msg err">{{ youtube_error }}</div>{% endif %}
             <p>Paste Netscape-format YouTube cookies here, then save. This enables YouTube links for the whole workspace on this server.</p>
-            {% if is_admin %}
             <form method="post" action="{{ url_for('save_youtube_cookies') }}">
               <textarea name="cookies_text" placeholder="# Netscape HTTP Cookie File&#10;.youtube.com&#9;TRUE&#9;/&#9;TRUE&#9;..."></textarea>
               <div class="setup-actions">
@@ -119,16 +136,86 @@
                 <button class="save-btn" type="submit">Save cookies</button>
               </div>
             </form>
-            {% else %}
-            <p>Ask a workspace admin to update YouTube cookies.</p>
-            {% endif %}
+            <div class="setup-divider"></div>
+            <div class="setup-small-title">Alternative: API mode</div>
+            <p>Use a MuAPI key to process YouTube links without asking every user to export YouTube cookies.</p>
+            <form method="post" action="{{ url_for('save_youtube_api_settings') }}">
+              <div class="setup-grid">
+                <div class="setup-field">
+                  <label for="web_pipeline_mode">Pipeline mode</label>
+                  <select id="web_pipeline_mode" name="web_pipeline_mode">
+                    <option value="local" {% if settings_state.web_pipeline_mode == 'local' %}selected{% endif %}>Local upload / yt-dlp</option>
+                    <option value="api" {% if settings_state.web_pipeline_mode == 'api' %}selected{% endif %}>API for links</option>
+                    <option value="auto" {% if settings_state.web_pipeline_mode == 'auto' %}selected{% endif %}>Auto</option>
+                  </select>
+                </div>
+                <div class="setup-field">
+                  <label for="muapi_api_key">MuAPI API key</label>
+                  <input id="muapi_api_key" name="muapi_api_key" type="password" autocomplete="off" placeholder="{{ 'Key saved' if settings_state.muapi_key_saved else 'Paste key' }}">
+                </div>
+              </div>
+              <div class="setup-actions">
+                <span class="setup-note">{{ 'MuAPI key saved' if settings_state.muapi_key_saved else 'No MuAPI key saved yet' }}</span>
+                <button class="save-btn" type="submit">Save API mode</button>
+              </div>
+            </form>
           </div>
         </div>
-        {% elif not ok and name == 'AI highlights' %}
+        {% elif name == 'Transcriber' %}
+        <div class="inline-setup hidden" id="{{ setup_id }}" data-setup-panel>
+          <div class="inline-setup-inner">
+            <h2>Transcriber setup</h2>
+            <p>For laptop uploads, choose Whisper for local transcription or Sarvam if you want hosted speech-to-text with your Sarvam key.</p>
+            <form method="post" action="{{ url_for('save_processing_settings') }}">
+              <div class="setup-grid">
+                <div class="setup-field">
+                  <label for="transcriber_provider">Transcriber</label>
+                  <select id="transcriber_provider" name="transcriber_provider">
+                    <option value="whisper" {% if settings_state.transcriber_provider == 'whisper' %}selected{% endif %}>Whisper</option>
+                    <option value="sarvam" {% if settings_state.transcriber_provider == 'sarvam' %}selected{% endif %}>Sarvam</option>
+                  </select>
+                </div>
+                <div class="setup-field">
+                  <label for="sarvam_api_key">Sarvam API key</label>
+                  <input id="sarvam_api_key" name="sarvam_api_key" type="password" autocomplete="off" placeholder="{{ 'Key saved' if settings_state.sarvam_key_saved else 'Paste key' }}">
+                </div>
+              </div>
+              <div class="setup-actions">
+                <span class="setup-note">{{ 'Sarvam key saved' if settings_state.sarvam_key_saved else 'Leave blank if using Whisper' }}</span>
+                <button class="save-btn" type="submit">Save transcriber</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        {% elif name == 'AI highlights' %}
         <div class="inline-setup hidden" id="{{ setup_id }}" data-setup-panel>
           <div class="inline-setup-inner">
             <h2>AI highlights setup</h2>
-            <p>For AI-ranked clips, set OPENAI_API_KEY with LLM_PROVIDER=openai, or set GEMINI_API_KEY with LLM_PROVIDER=gemini in your hosting environment.</p>
+            <p>Choose the highlight ranking provider and paste the matching key here. Heuristic mode works without a key, but AI ranking needs OpenAI or Gemini.</p>
+            <form method="post" action="{{ url_for('save_processing_settings') }}">
+              <div class="setup-grid">
+                <div class="setup-field">
+                  <label for="llm_provider">Highlight provider</label>
+                  <select id="llm_provider" name="llm_provider">
+                    <option value="heuristic" {% if settings_state.llm_provider == 'heuristic' %}selected{% endif %}>Heuristic</option>
+                    <option value="openai" {% if settings_state.llm_provider == 'openai' %}selected{% endif %}>OpenAI</option>
+                    <option value="gemini" {% if settings_state.llm_provider == 'gemini' %}selected{% endif %}>Gemini</option>
+                  </select>
+                </div>
+                <div class="setup-field">
+                  <label for="openai_api_key">OpenAI API key</label>
+                  <input id="openai_api_key" name="openai_api_key" type="password" autocomplete="off" placeholder="{{ 'Key saved' if settings_state.openai_key_saved else 'Paste key' }}">
+                </div>
+                <div class="setup-field">
+                  <label for="gemini_api_key">Gemini API key</label>
+                  <input id="gemini_api_key" name="gemini_api_key" type="password" autocomplete="off" placeholder="{{ 'Key saved' if settings_state.gemini_key_saved else 'Paste key' }}">
+                </div>
+              </div>
+              <div class="setup-actions">
+                <span class="setup-note">Blank fields keep existing saved keys.</span>
+                <button class="save-btn" type="submit">Save AI setup</button>
+              </div>
+            </form>
           </div>
         </div>
         {% elif not ok and 'publishing' in name %}
