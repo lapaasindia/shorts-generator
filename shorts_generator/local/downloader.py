@@ -198,12 +198,14 @@ def _youtube_auth_help(has_cookies: bool) -> str:
     if has_cookies:
         return (
             "YouTube rejected the server download even though cookies are configured. "
-            "Refresh the YouTube cookies and update YTDLP_COOKIE_FILE or YTDLP_COOKIES_TEXT."
+            "Refresh the YouTube cookies, or switch Status > YouTube downloads to API mode "
+            "with a MuAPI key so users do not need YouTube cookies."
         )
     return (
         "YouTube blocked this server download with a bot/sign-in check. "
         "For hosted deployments, export YouTube cookies and set YTDLP_COOKIES_TEXT "
         "or mount a cookies.txt file and set YTDLP_COOKIE_FILE. "
+        "The easiest hosted fix is Status > YouTube downloads > API mode with a MuAPI key. "
         "For local desktop runs, you can also set YTDLP_COOKIES_FROM_BROWSER=chrome. "
         "The page theme is unchanged; this is a server-side YouTube authentication requirement."
     )
@@ -248,38 +250,70 @@ def download_youtube_local(video_url: str, fmt: str = "720", out_dir: Optional[s
     # Optional escape hatch: pull cookies from a local browser to defeat
     # age/region/bot gating, e.g. YTDLP_COOKIES_FROM_BROWSER=chrome
     cookies_browser = os.getenv("YTDLP_COOKIES_FROM_BROWSER", "").strip()
-    if cookies_browser:
-        base_ydl_opts["cookiesfrombrowser"] = (cookies_browser,)
     cookie_file = _cookie_file_from_env(out_dir)
-    has_cookies = bool(cookies_browser or cookie_file)
+    cookie_opts = {}
+    if cookies_browser:
+        cookie_opts["cookiesfrombrowser"] = (cookies_browser,)
     if cookie_file:
-        base_ydl_opts["cookiefile"] = cookie_file
+        cookie_opts["cookiefile"] = cookie_file
+    has_cookies = bool(cookie_opts)
 
     ffmpeg_location = _ffmpeg_location()
     if ffmpeg_location:
         base_ydl_opts["ffmpeg_location"] = ffmpeg_location
 
     last_format_error: Optional[Exception] = None
+    last_auth_error: Optional[Exception] = None
+    auth_variants = []
+    if cookie_opts:
+        auth_variants.append(("configured cookies", cookie_opts))
+    auth_variants.append(("no cookies", {}))
+
     try:
-        for label, selector in _format_candidates(fmt):
-            ydl_opts = dict(base_ydl_opts)
-            ydl_opts["format"] = selector
-            if label == "mp4":
-                ydl_opts["merge_output_format"] = "mp4"
-            try:
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    print(f"[download/local] trying format: {label}", flush=True)
-                    info = ydl.extract_info(video_url, download=True)
-                    path = _downloaded_path(ydl, info)
-                    break
-            except Exception as exc:
-                message = str(exc)
-                if _is_format_unavailable_error(message):
-                    last_format_error = exc
-                    print(f"[download/local] format unavailable ({label}); trying fallback", flush=True)
-                    continue
-                raise
+        path = None
+        for auth_label, auth_opts in auth_variants:
+            if auth_label == "no cookies" and has_cookies:
+                print("[download/local] retrying without configured YouTube cookies", flush=True)
+
+            for label, selector in _format_candidates(fmt):
+                ydl_opts = dict(base_ydl_opts)
+                ydl_opts.update(auth_opts)
+                ydl_opts["format"] = selector
+                if label == "mp4":
+                    ydl_opts["merge_output_format"] = "mp4"
+                try:
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        print(f"[download/local] trying format: {label} ({auth_label})", flush=True)
+                        info = ydl.extract_info(video_url, download=True)
+                        path = _downloaded_path(ydl, info)
+                        break
+                except Exception as exc:
+                    message = str(exc)
+                    if _is_format_unavailable_error(message):
+                        last_format_error = exc
+                        print(f"[download/local] format unavailable ({label}); trying fallback", flush=True)
+                        continue
+                    if _is_youtube_auth_error(message):
+                        last_auth_error = exc
+                        print(f"[download/local] YouTube auth rejected ({auth_label})", flush=True)
+                        break
+                    raise
+            if path:
+                break
+            if last_auth_error:
+                continue
         else:
+            if last_auth_error:
+                raise RuntimeError(_youtube_auth_help(has_cookies)) from last_auth_error
+            if last_format_error:
+                raise RuntimeError(
+                    "YouTube did not provide the requested quality or any usable fallback format."
+                ) from last_format_error
+            raise RuntimeError("YouTube download failed before a source file was created.")
+
+        if not path:
+            if last_auth_error:
+                raise RuntimeError(_youtube_auth_help(has_cookies)) from last_auth_error
             raise RuntimeError(
                 "YouTube did not provide the requested quality or any usable fallback format."
             ) from last_format_error

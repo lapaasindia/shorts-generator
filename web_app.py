@@ -343,6 +343,13 @@ def _scrub_job_for_response(job: Dict) -> Dict:
     return scrubbed
 
 
+def _is_youtube_download_blocked(error_text: str) -> bool:
+    return (
+        error_text.startswith("YouTube blocked this server download")
+        or error_text.startswith("YouTube rejected the server download")
+    )
+
+
 def _job_meta_path(job_id: str) -> Path:
     return _job_dir(job_id) / "job.json"
 
@@ -532,20 +539,49 @@ def _run_job(
         if pipeline_mode == "api" and not generator_config.MUAPI_API_KEY:
             pipeline_mode = "local"
 
-        with redirect_stdout(output), redirect_stderr(output):
-            result = generate_shorts(
-                youtube_url=source,
-                num_clips=num_clips,
-                aspect_ratio=aspect_ratio,
-                download_format=download_format,
-                language=language or None,
-                mode=pipeline_mode,
-                output_dir=str(job_dir),
-                template_ids=template_ids,
-                nonlinear_edit=nonlinear_edit,
-                focus_prompt=focus_prompt,
-                upscale=upscale,
+        try:
+            with redirect_stdout(output), redirect_stderr(output):
+                result = generate_shorts(
+                    youtube_url=source,
+                    num_clips=num_clips,
+                    aspect_ratio=aspect_ratio,
+                    download_format=download_format,
+                    language=language or None,
+                    mode=pipeline_mode,
+                    output_dir=str(job_dir),
+                    template_ids=template_ids,
+                    nonlinear_edit=nonlinear_edit,
+                    focus_prompt=focus_prompt,
+                    upscale=upscale,
+                )
+        except Exception as exc:
+            error_text = str(exc)
+            can_retry_api = (
+                pipeline_mode == "local"
+                and _is_youtube_url(source)
+                and _is_youtube_download_blocked(error_text)
+                and bool(generator_config.MUAPI_API_KEY)
             )
+            if not can_retry_api:
+                raise
+
+            _append_log(job_id, output.getvalue())
+            _append_log(job_id, "Local YouTube download was blocked; retrying with API mode.")
+            output = io.StringIO()
+            with redirect_stdout(output), redirect_stderr(output):
+                result = generate_shorts(
+                    youtube_url=source,
+                    num_clips=num_clips,
+                    aspect_ratio=aspect_ratio,
+                    download_format=download_format,
+                    language=language or None,
+                    mode="api",
+                    output_dir=str(job_dir),
+                    template_ids=template_ids,
+                    nonlinear_edit=nonlinear_edit,
+                    focus_prompt=focus_prompt,
+                    upscale=upscale,
+                )
         serialized_result = _serialize_result(job_id, result)
         job_result_path = job_dir / "result.json"
         job_result_path.write_text(json.dumps(serialized_result, indent=2, default=str), encoding="utf-8")
@@ -560,10 +596,7 @@ def _run_job(
         _append_log(job_id, "Job complete")
     except Exception as exc:
         error_text = str(exc)
-        youtube_setup_error = (
-            error_text.startswith("YouTube blocked this server download")
-            or error_text.startswith("YouTube rejected the server download")
-        )
+        youtube_setup_error = _is_youtube_download_blocked(error_text)
         if not youtube_setup_error:
             _append_log(job_id, output.getvalue())
         if os.getenv("WEB_SHOW_TRACEBACKS", "false").strip().lower() == "true":
