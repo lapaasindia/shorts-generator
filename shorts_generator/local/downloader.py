@@ -49,6 +49,50 @@ def _format_for(fmt: str) -> str:
     )
 
 
+def _format_candidates(fmt: str) -> list[tuple[str, str]]:
+    """Return progressively looser yt-dlp selectors for videos with limited formats."""
+    try:
+        height = int(fmt)
+    except ValueError:
+        height = 720
+    return [
+        ("mp4", _format_for(fmt)),
+        (
+            "any <= requested height",
+            f"bestvideo*[height<={height}]+bestaudio/best[height<={height}]/best",
+        ),
+        ("best available", "bestvideo*+bestaudio/best"),
+    ]
+
+
+def _is_format_unavailable_error(message: str) -> bool:
+    needle = message.lower()
+    return "requested format is not available" in needle or "format is not available" in needle
+
+
+def _downloaded_path(ydl, info: dict) -> str:
+    candidates = []
+    for item in info.get("requested_downloads") or []:
+        value = item.get("filepath") or item.get("_filename")
+        if value:
+            candidates.append(value)
+    candidates.append(ydl.prepare_filename(info))
+
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            return candidate
+
+    # merge_output_format may rename the extension after merge.
+    for candidate in candidates:
+        stem, _ = os.path.splitext(candidate)
+        for ext in (".mp4", ".mkv", ".webm"):
+            merged = stem + ext
+            if os.path.exists(merged):
+                return merged
+
+    return candidates[-1]
+
+
 def _extract_youtube_video_id(source: str) -> Optional[str]:
     """Best-effort extraction of a YouTube video id from a URL."""
     parsed = urlparse(source)
@@ -184,10 +228,8 @@ def download_youtube_local(video_url: str, fmt: str = "720", out_dir: Optional[s
             return cached
 
     print(f"[download/local] {video_url} @ {fmt}p → {out_dir}/", flush=True)
-    ydl_opts = {
-        "format": _format_for(fmt),
+    base_ydl_opts = {
         "outtmpl": os.path.join(out_dir, "source_%(id)s.%(ext)s"),
-        "merge_output_format": "mp4",
         "quiet": True,
         "no_warnings": True,
         "noprogress": True,
@@ -201,33 +243,46 @@ def download_youtube_local(video_url: str, fmt: str = "720", out_dir: Optional[s
             "YTDLP_PLAYER_CLIENTS", "android,ios,tv,web"
         ).split(",") if c.strip()
     ]
-    ydl_opts["extractor_args"] = {"youtube": {"player_client": player_clients}}
+    base_ydl_opts["extractor_args"] = {"youtube": {"player_client": player_clients}}
 
     # Optional escape hatch: pull cookies from a local browser to defeat
     # age/region/bot gating, e.g. YTDLP_COOKIES_FROM_BROWSER=chrome
     cookies_browser = os.getenv("YTDLP_COOKIES_FROM_BROWSER", "").strip()
     if cookies_browser:
-        ydl_opts["cookiesfrombrowser"] = (cookies_browser,)
+        base_ydl_opts["cookiesfrombrowser"] = (cookies_browser,)
     cookie_file = _cookie_file_from_env(out_dir)
     has_cookies = bool(cookies_browser or cookie_file)
     if cookie_file:
-        ydl_opts["cookiefile"] = cookie_file
+        base_ydl_opts["cookiefile"] = cookie_file
 
     ffmpeg_location = _ffmpeg_location()
     if ffmpeg_location:
-        ydl_opts["ffmpeg_location"] = ffmpeg_location
+        base_ydl_opts["ffmpeg_location"] = ffmpeg_location
 
+    last_format_error: Optional[Exception] = None
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(video_url, download=True)
-            path = ydl.prepare_filename(info)
-            # merge_output_format may rename the extension after merge
-            if not os.path.exists(path):
-                stem, _ = os.path.splitext(path)
-                for ext in (".mp4", ".mkv", ".webm"):
-                    if os.path.exists(stem + ext):
-                        path = stem + ext
-                        break
+        for label, selector in _format_candidates(fmt):
+            ydl_opts = dict(base_ydl_opts)
+            ydl_opts["format"] = selector
+            if label == "mp4":
+                ydl_opts["merge_output_format"] = "mp4"
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    print(f"[download/local] trying format: {label}", flush=True)
+                    info = ydl.extract_info(video_url, download=True)
+                    path = _downloaded_path(ydl, info)
+                    break
+            except Exception as exc:
+                message = str(exc)
+                if _is_format_unavailable_error(message):
+                    last_format_error = exc
+                    print(f"[download/local] format unavailable ({label}); trying fallback", flush=True)
+                    continue
+                raise
+        else:
+            raise RuntimeError(
+                "YouTube did not provide the requested quality or any usable fallback format."
+            ) from last_format_error
     except Exception as exc:
         message = str(exc)
         if _is_youtube_auth_error(message):
